@@ -831,67 +831,6 @@ Provide a helpful, concise response in markdown format.`;
                 {/* Right Column */}
                 <div className="xl:col-span-8 flex flex-col gap-6">
                   
-                  {/* Map Card */}
-                  <div className="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden relative h-[500px] flex-shrink-0">
-                    <img src="https://images.unsplash.com/photo-1625246333195-78d9c38ad449?q=80&w=2070&auto=format&fit=crop" alt="Farm Map" className="w-full h-full object-cover" />
-                    
-                    {/* Map Controls */}
-                    <div className="absolute top-6 left-6 w-10 h-10 bg-black/40 backdrop-blur-md rounded-full flex items-center justify-center text-white cursor-pointer hover:bg-black/60 transition-colors">
-                      <Layers className="w-5 h-5" />
-                    </div>
-                    <div className="absolute top-6 right-6 w-10 h-10 bg-black/40 backdrop-blur-md rounded-full flex items-center justify-center text-white cursor-pointer hover:bg-black/60 transition-colors">
-                      <Search className="w-5 h-5" />
-                    </div>
-                    <div className="absolute bottom-6 left-6 flex flex-col gap-2">
-                      <div className="w-10 h-10 bg-black/40 backdrop-blur-md rounded-full flex items-center justify-center text-white cursor-pointer hover:bg-black/60 transition-colors"><Plus className="w-5 h-5" /></div>
-                      <div className="w-10 h-10 bg-black/40 backdrop-blur-md rounded-full flex items-center justify-center text-white cursor-pointer hover:bg-black/60 transition-colors"><Minus className="w-5 h-5" /></div>
-                    </div>
-
-                    {/* Overlay Card */}
-                    <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-80 bg-[#354A35]/90 backdrop-blur-xl rounded-3xl p-6 text-white shadow-2xl">
-                      <h3 className="font-medium mb-6 text-center text-emerald-50">Area 1: Rice Field</h3>
-                      <div className="flex justify-between mb-6">
-                        <div>
-                          <p className="text-xs text-emerald-200/70 mb-1">Planting date</p>
-                          <p className="text-sm font-medium">24 Aug 25</p>
-                        </div>
-                        <div>
-                          <p className="text-xs text-emerald-200/70 mb-1">Harvest Date</p>
-                          <p className="text-sm font-medium">12 Dec 25</p>
-                        </div>
-                      </div>
-                      <div className="mb-6">
-                        <div className="flex justify-between text-xs mb-2">
-                          <span className="text-emerald-200/70">Crop health</span>
-                          <span className="font-medium">87 %</span>
-                        </div>
-                        <div className="h-1.5 bg-black/20 rounded-full overflow-hidden">
-                          <div className="h-full bg-emerald-400 w-[87%]"></div>
-                        </div>
-                      </div>
-                      <div className="border-t border-white/10 pt-4">
-                        <div className="flex justify-between items-center mb-4 cursor-pointer">
-                          <span className="text-sm font-medium text-emerald-50">Sensor log</span>
-                          <ChevronUp className="w-4 h-4 text-emerald-200/70" />
-                        </div>
-                        <div className="space-y-3 text-sm">
-                          <div className="flex justify-between">
-                            <span className="text-emerald-200/70">Temperature</span>
-                            <span>{sensorData.temp} °C</span>
-                          </div>
-                          <div className="flex justify-between">
-                            <span className="text-emerald-200/70">Humidity</span>
-                            <span>{sensorData.moisture} %</span>
-                          </div>
-                          <div className="flex justify-between">
-                            <span className="text-emerald-200/70">Soil Moisture</span>
-                            <span>68 %</span>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
                   {/* Bottom Row: Growth & AI */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6 flex-1">
                     
