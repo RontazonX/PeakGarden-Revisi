@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { motion } from 'motion/react';
 import { supabase } from '@/lib/supabase';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area, Legend } from 'recharts';
-import { Activity, Droplets, Thermometer, Calendar } from 'lucide-react';
+import { Activity, Droplets, Thermometer, Calendar, ArrowLeft } from 'lucide-react';
 
 export default function AnalyticsPage() {
   const router = useRouter();
@@ -91,12 +91,21 @@ export default function AnalyticsPage() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         
         <div className="mb-8 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div>
-            <h1 className="text-3xl font-bold text-slate-900">Analitik Kebun</h1>
-            <p className="text-slate-500 mt-1 flex items-center gap-2">
-              <Activity className="w-4 h-4" />
-              Menampilkan data historis untuk perangkat <span className="font-mono bg-slate-200 px-2 py-0.5 rounded text-xs text-slate-700">{deviceId}</span>
-            </p>
+          <div className="flex items-center gap-4">
+            <button 
+              onClick={() => router.push('/dashboard')}
+              className="w-10 h-10 bg-white border border-slate-200 rounded-full flex items-center justify-center text-slate-600 hover:bg-slate-50 transition-colors shadow-sm shrink-0"
+              title="Kembali ke Dashboard"
+            >
+              <ArrowLeft className="w-5 h-5" />
+            </button>
+            <div>
+              <h1 className="text-3xl font-bold text-slate-900">Analitik Kebun</h1>
+              <p className="text-slate-500 mt-1 flex items-center gap-2">
+                <Activity className="w-4 h-4" />
+                Menampilkan data historis untuk perangkat <span className="font-mono bg-slate-200 px-2 py-0.5 rounded text-xs text-slate-700">{deviceId}</span>
+              </p>
+            </div>
           </div>
           
           <div className="flex items-center gap-2 bg-white p-1 rounded-lg border border-slate-200 shadow-sm">

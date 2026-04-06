@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'motion/react';
-import { Droplets, Thermometer, Power, Lock, KeyRound, Sprout, AlertTriangle, LogOut, Cpu, Activity, Settings2, Bell, BellOff, Save, X, CheckCircle2, LayoutGrid, MessageSquare, Leaf, LineChart as LineChartIcon, CloudSun, Users, CreditCard, Settings, ChevronDown, Wind, FlaskConical, Layers, Search, Plus, Minus, ChevronUp, MoreHorizontal, ArrowRight } from 'lucide-react';
+import { Droplets, Thermometer, Power, Lock, KeyRound, Sprout, AlertTriangle, LogOut, Cpu, Activity, Settings2, Bell, BellOff, Save, X, CheckCircle2, LayoutGrid, MessageSquare, Leaf, LineChart as LineChartIcon, CloudSun, Users, CreditCard, Settings, ChevronDown, Wind, FlaskConical, Layers, Search, Plus, Minus, ChevronUp, MoreHorizontal, ArrowRight, ArrowLeft } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Brush } from 'recharts';
 import Markdown from 'react-markdown';
@@ -640,53 +640,33 @@ Provide a helpful, concise response in markdown format.`;
               
               {/* Navigation Icons */}
               <nav className="flex flex-col gap-4 w-full items-center flex-1">
-                <button className="w-12 h-12 bg-white rounded-2xl shadow-sm flex items-center justify-center text-slate-700 transition-transform hover:scale-105">
+                <button 
+                  onClick={() => router.push('/dashboard')}
+                  className="w-12 h-12 bg-white rounded-2xl shadow-sm flex items-center justify-center text-emerald-600 transition-transform hover:scale-105"
+                  title="Dashboard"
+                >
                   <LayoutGrid className="w-5 h-5" />
                 </button>
-                <button className="w-12 h-12 text-slate-400 hover:text-slate-700 hover:bg-white/50 rounded-2xl flex items-center justify-center transition-all">
-                  <Activity className="w-5 h-5" />
-                </button>
-                <button className="w-12 h-12 text-slate-400 hover:text-slate-700 hover:bg-white/50 rounded-2xl flex items-center justify-center transition-all">
-                  <Bell className="w-5 h-5" />
-                </button>
-                <button className="w-12 h-12 text-slate-400 hover:text-slate-700 hover:bg-white/50 rounded-2xl flex items-center justify-center transition-all">
-                  <MessageSquare className="w-5 h-5" />
-                </button>
-                
-                <div className="w-10 h-px bg-slate-200 my-2"></div>
-                
-                <button className="w-12 h-12 text-slate-400 hover:text-slate-700 hover:bg-white/50 rounded-2xl flex items-center justify-center transition-all">
-                  <Leaf className="w-5 h-5" />
-                </button>
-                <button className="w-12 h-12 text-slate-400 hover:text-slate-700 hover:bg-white/50 rounded-2xl flex items-center justify-center transition-all">
+                <button 
+                  onClick={() => router.push('/dashboard/analytics')}
+                  className="w-12 h-12 text-slate-400 hover:text-emerald-600 hover:bg-white/50 rounded-2xl flex items-center justify-center transition-all"
+                  title="Analytics"
+                >
                   <LineChartIcon className="w-5 h-5" />
                 </button>
-                <button className="w-12 h-12 text-slate-400 hover:text-slate-700 hover:bg-white/50 rounded-2xl flex items-center justify-center transition-all">
-                  <Droplets className="w-5 h-5" />
-                </button>
-                <button className="w-12 h-12 text-slate-400 hover:text-slate-700 hover:bg-white/50 rounded-2xl flex items-center justify-center transition-all">
-                  <CloudSun className="w-5 h-5" />
-                </button>
-                
-                <div className="w-10 h-px bg-slate-200 my-2"></div>
-                
-                <button className="w-12 h-12 text-slate-400 hover:text-slate-700 hover:bg-white/50 rounded-2xl flex items-center justify-center transition-all">
-                  <Users className="w-5 h-5" />
-                </button>
-                <button className="w-12 h-12 text-slate-400 hover:text-slate-700 hover:bg-white/50 rounded-2xl flex items-center justify-center transition-all">
-                  <CreditCard className="w-5 h-5" />
+                <button 
+                  onClick={() => setShowSettings(true)}
+                  className="w-12 h-12 text-slate-400 hover:text-emerald-600 hover:bg-white/50 rounded-2xl flex items-center justify-center transition-all"
+                  title="Settings"
+                >
+                  <Settings className="w-5 h-5" />
                 </button>
               </nav>
               
               <button 
-                onClick={() => setShowSettings(true)}
-                className="w-12 h-12 text-slate-400 hover:text-slate-700 hover:bg-white/50 rounded-2xl flex items-center justify-center transition-all mt-auto"
-              >
-                <Settings className="w-5 h-5" />
-              </button>
-              <button 
                 onClick={handleDisconnect}
-                className="w-12 h-12 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-2xl flex items-center justify-center transition-all"
+                className="w-12 h-12 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-2xl flex items-center justify-center transition-all mt-auto"
+                title="Disconnect Device"
               >
                 <LogOut className="w-5 h-5" />
               </button>
@@ -697,9 +677,18 @@ Provide a helpful, concise response in markdown format.`;
               
               {/* Header */}
               <header className="flex justify-between items-start mb-8">
-                <div>
-                  <h1 className="text-3xl font-serif text-slate-900 mb-2">Hi, {userProfile?.name?.split(' ')[0] || 'User'}!</h1>
-                  <p className="text-slate-500 text-sm">Your farm performance is stable. Here&apos;s today&apos;s overview.</p>
+                <div className="flex items-center gap-4">
+                  <button 
+                    onClick={() => router.push('/')}
+                    className="w-12 h-12 bg-white border border-slate-200 rounded-full flex items-center justify-center text-slate-600 hover:bg-slate-50 transition-colors shadow-sm shrink-0"
+                    title="Kembali ke Beranda"
+                  >
+                    <ArrowLeft className="w-5 h-5" />
+                  </button>
+                  <div>
+                    <h1 className="text-3xl font-serif text-slate-900 mb-1">Hi, {userProfile?.name?.split(' ')[0] || 'User'}!</h1>
+                    <p className="text-slate-500 text-sm">Your farm performance is stable. Here&apos;s today&apos;s overview.</p>
+                  </div>
                 </div>
                 
                 <div className="flex items-center gap-3 bg-white p-1.5 pr-4 rounded-full shadow-sm border border-slate-100 cursor-pointer hover:shadow-md transition-shadow">
@@ -716,10 +705,10 @@ Provide a helpful, concise response in markdown format.`;
               </header>
 
               {/* Dashboard Grid */}
-              <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 max-w-[1600px] mx-auto">
+              <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 max-w-[1600px] mx-auto pb-12">
                 
-                {/* Left Column (Span 4) */}
-                <div className="xl:col-span-5 flex flex-col gap-6">
+                {/* Left Column */}
+                <div className="xl:col-span-4 flex flex-col gap-6">
                   
                   {/* Weather Card */}
                   <div className="bg-white rounded-3xl p-6 shadow-sm border border-slate-100 flex flex-col justify-between">
@@ -771,52 +760,8 @@ Provide a helpful, concise response in markdown format.`;
                     </div>
                   </div>
 
-                  {/* Plant Health & Active Zones */}
-                  <div className="grid grid-cols-2 gap-6">
-                    <div className="bg-white rounded-3xl p-6 shadow-sm border border-slate-100 flex flex-col justify-between">
-                      <div className="flex items-center gap-3 mb-6">
-                        <div className="w-8 h-8 bg-emerald-50 rounded-full flex items-center justify-center">
-                          <Leaf className="w-4 h-4 text-emerald-600" />
-                        </div>
-                        <span className="font-medium text-slate-800">Plant Health</span>
-                      </div>
-                      <div className="flex items-baseline gap-2">
-                        <span className="text-4xl font-serif text-slate-900">95%</span>
-                        <span className="text-sm text-slate-500">Excellent</span>
-                      </div>
-                    </div>
-                    
-                    <div className="bg-white rounded-3xl p-6 shadow-sm border border-slate-100 flex flex-col justify-between">
-                      <div className="flex items-center gap-3 mb-6">
-                        <div className="w-8 h-8 bg-emerald-50 rounded-full flex items-center justify-center">
-                          <LayoutGrid className="w-4 h-4 text-emerald-600" />
-                        </div>
-                        <span className="font-medium text-slate-800">Active Crop Zones</span>
-                      </div>
-                      <div className="flex items-baseline gap-2">
-                        <span className="text-4xl font-serif text-slate-900">9</span>
-                        <span className="text-sm text-slate-500">Zones</span>
-                        <span className="text-xs text-emerald-600 font-medium ml-auto bg-emerald-50 px-2 py-1 rounded-full">+2 From yesterday</span>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Soil Nutrient Status */}
-                  <div className="bg-white rounded-3xl p-6 shadow-sm border border-slate-100">
-                    <h3 className="font-medium text-slate-800 mb-1">Soil Nutrient Status</h3>
-                    <p className="text-sm text-slate-500 mb-6">Balanced nutrient composition</p>
-                    <div className="flex items-center gap-6">
-                      <div className="flex-1 h-8 flex items-end gap-1">
-                        {[1,2,3,4,5,6,7,8,9,10,11,12].map(i => (
-                          <div key={i} className="flex-1 bg-emerald-500 rounded-t-sm" style={{ height: `${(i/12) * 100}%`, opacity: 0.3 + (i/12)*0.7 }}></div>
-                        ))}
-                      </div>
-                      <span className="font-medium text-emerald-600">Optimal</span>
-                    </div>
-                  </div>
-
                   {/* Auto Watering & pH Balancer */}
-                  <div className="grid grid-cols-2 gap-6">
+                  <div className="grid grid-cols-2 gap-4">
                     <div className="bg-white rounded-3xl p-6 shadow-sm border border-slate-100 flex flex-col justify-between">
                       <div>
                         <Droplets className="w-6 h-6 text-slate-800 mb-4" />
@@ -863,26 +808,28 @@ Provide a helpful, concise response in markdown format.`;
                       </div>
                       <span className="font-medium text-slate-800 text-sm">Moderate - High</span>
                     </div>
-                    <div className="flex gap-1 h-10 items-end">
-                      {Array.from({length: 40}).map((_, i) => (
-                        <div 
-                          key={i} 
-                          className={`flex-1 rounded-full ${i < 20 ? 'bg-amber-500' : i < 32 ? 'bg-emerald-500' : 'bg-emerald-800'}`} 
-                          style={{ 
-                            opacity: i === 31 ? 1 : 0.7, 
-                            height: i === 31 ? '120%' : '100%', 
-                            transform: i === 31 ? 'translateY(-10%)' : 'none',
-                            width: i === 31 ? '4px' : 'auto'
-                          }}
-                        ></div>
-                      ))}
+                    <div className="flex gap-1 h-12 items-end pt-2">
+                      {Array.from({length: 40}).map((_, i) => {
+                        // Deterministic pseudo-random height
+                        const h = 30 + (Math.sin(i * 0.5) * 20) + (Math.cos(i * 1.2) * 10) + (i === 31 ? 40 : 0);
+                        return (
+                          <div 
+                            key={i} 
+                            className={`flex-1 rounded-full ${i < 20 ? 'bg-amber-500' : i < 32 ? 'bg-emerald-500' : 'bg-emerald-800'}`} 
+                            style={{ 
+                              opacity: i === 31 ? 1 : 0.4, 
+                              height: i === 31 ? '100%' : `${Math.min(100, Math.max(20, h))}%`, 
+                            }}
+                          ></div>
+                        );
+                      })}
                     </div>
                   </div>
 
                 </div>
 
-                {/* Right Column (Span 7) */}
-                <div className="xl:col-span-7 flex flex-col gap-6">
+                {/* Right Column */}
+                <div className="xl:col-span-8 flex flex-col gap-6">
                   
                   {/* Map Card */}
                   <div className="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden relative h-[500px] flex-shrink-0">
@@ -954,21 +901,45 @@ Provide a helpful, concise response in markdown format.`;
                       <p className="text-sm text-slate-500 mb-8">Strong nutrient balance</p>
                       
                       <div className="flex-1 flex flex-col items-center justify-center relative min-h-[160px]">
-                        {/* Mock Gauge */}
-                        <div className="w-48 h-24 relative overflow-hidden">
-                          <div className="absolute top-0 left-0 w-48 h-48 rounded-full border-[16px] border-slate-100 border-b-transparent border-r-transparent rotate-45"></div>
-                          <div className="absolute top-0 left-0 w-48 h-48 rounded-full border-[16px] border-emerald-500 border-b-transparent border-r-transparent" style={{ clipPath: 'polygon(0 0, 100% 0, 100% 50%, 0 50%)', transform: 'rotate(45deg) rotate(87deg)' }}></div>
-                          {/* Dashed lines for gauge */}
-                          <div className="absolute inset-0 rounded-full border-[16px] border-dashed border-white/40 border-b-transparent border-r-transparent rotate-45 pointer-events-none"></div>
-                          <div className="absolute bottom-0 right-4 w-4 h-4 bg-emerald-500 rounded-full border-2 border-white shadow-sm"></div>
-                        </div>
-                        <div className="absolute bottom-0 text-center">
-                          <div className="text-5xl font-serif text-slate-900 mb-1">87%</div>
-                          <div className="text-sm text-slate-500">Growth Level</div>
+                        {/* SVG Gauge */}
+                        <div className="relative w-48 h-24">
+                          <svg viewBox="0 0 200 100" className="w-full h-full overflow-visible">
+                            {/* Background arc */}
+                            <path 
+                              d="M 20 100 A 80 80 0 0 1 180 100" 
+                              fill="none" 
+                              stroke="#f1f5f9" 
+                              strokeWidth="16" 
+                              strokeLinecap="round" 
+                            />
+                            {/* Foreground arc (87%) */}
+                            <path 
+                              d="M 20 100 A 80 80 0 0 1 180 100" 
+                              fill="none" 
+                              stroke="#10b981" 
+                              strokeWidth="16" 
+                              strokeLinecap="round" 
+                              strokeDasharray="251.2" 
+                              strokeDashoffset={251.2 * (1 - 0.87)} 
+                            />
+                            {/* Indicator dot */}
+                            <circle 
+                              cx="160" 
+                              cy="35" 
+                              r="8" 
+                              fill="#10b981" 
+                              stroke="#ffffff" 
+                              strokeWidth="3" 
+                            />
+                          </svg>
+                          <div className="absolute bottom-0 left-0 right-0 text-center translate-y-4">
+                            <div className="text-5xl font-serif text-slate-900 mb-1">87%</div>
+                            <div className="text-sm text-slate-500">Growth Level</div>
+                          </div>
                         </div>
                       </div>
                       
-                      <div className="flex justify-between mt-auto pt-6">
+                      <div className="flex justify-between mt-auto pt-10">
                         <div className="text-center"><span className="font-medium text-slate-900">92</span> <span className="text-xs text-slate-500 ml-1">Max</span></div>
                         <div className="text-center"><span className="font-medium text-slate-900">72</span> <span className="text-xs text-slate-500 ml-1">Min</span></div>
                         <div className="text-center"><span className="font-medium text-slate-900">64</span> <span className="text-xs text-slate-500 ml-1">Avg</span></div>
