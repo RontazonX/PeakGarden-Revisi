@@ -79,6 +79,7 @@ export default function SmartGardenApp() {
   const [isSavingSettings, setIsSavingSettings] = useState(false);
   const [saveSuccessMessage, setSaveSuccessMessage] = useState('');
   const [pumpHistory, setPumpHistory] = useState<{ time: string, status: number }[]>([]);
+  const [pumpError, setPumpError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const [deviceStatus, setDeviceStatus] = useState<'online' | 'offline' | 'connecting'>('connecting');
@@ -88,22 +89,38 @@ export default function SmartGardenApp() {
   const [chatMessages, setChatMessages] = useState<{role: 'user' | 'assistant', content: string}[]>([
     {
       role: 'user',
-      content: 'Give me recommendation for Area 1'
+      content: 'How is my garden doing today?'
     },
     {
       role: 'assistant',
-      content: 'Sure, here are my recommendation for your Area 1 (Rice Field):\n- Monitor soil moisture over next 48 hours\n- Maintain current fertilization level\n- Prepare for mid-season pest inspection\n- Keep the water auto watering on.\n\nPlease check again after 2 days'
+      content: 'Your garden is looking good! The temperature and soil moisture are currently being monitored. Let me know if you need any specific recommendations or if you want me to adjust the auto-watering schedule.'
     }
   ]);
   const [chatInput, setChatInput] = useState('');
   const [isChatLoading, setIsChatLoading] = useState(false);
+  const [showScrollToBottom, setShowScrollToBottom] = useState(false);
   const chatContainerRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
+  const scrollToBottom = () => {
     if (chatContainerRef.current) {
-      chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
+      chatContainerRef.current.scrollTo({
+        top: chatContainerRef.current.scrollHeight,
+        behavior: 'smooth'
+      });
     }
-  }, [chatMessages]);
+  };
+
+  useEffect(() => {
+    scrollToBottom();
+  }, [chatMessages, isChatLoading]);
+
+  const handleChatScroll = () => {
+    if (!chatContainerRef.current) return;
+    const { scrollTop, scrollHeight, clientHeight } = chatContainerRef.current;
+    // Show button if we are scrolled up more than 50px from the bottom
+    const isScrolledUp = scrollHeight - scrollTop - clientHeight > 50;
+    setShowScrollToBottom(isScrolledUp);
+  };
 
   const handleSendMessage = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
@@ -334,7 +351,9 @@ Provide a helpful, concise response in markdown format.`;
   const togglePump = async () => {
     if (!deviceId) return;
     
+    setPumpError(null);
     const newValue = sensorData.pump === 1 ? 0 : 1;
+    const previousValue = sensorData.pump;
     
     // Optimistic update
     setSensorData(prev => ({ ...prev, pump: newValue }));
@@ -358,7 +377,34 @@ Provide a helpful, concise response in markdown format.`;
 
       console.error('Error updating pump:', errorMessage, err);
       // Revert on error
-      setSensorData(prev => ({ ...prev, pump: newValue === 1 ? 0 : 1 }));
+      setSensorData(prev => ({ ...prev, pump: previousValue }));
+      setPumpError('Failed to update pump status');
+      
+      // Clear error after 3 seconds
+      setTimeout(() => {
+        setPumpError(null);
+      }, 3000);
+    }
+  };
+
+  // Update Single Threshold
+  const updateThreshold = async (sensorName: string, value: number) => {
+    if (!deviceId) return;
+    try {
+      const { data: existing } = await supabase
+        .from('garden_stats')
+        .select('id')
+        .eq('device_id', deviceId)
+        .eq('sensor_name', sensorName)
+        .single();
+        
+      if (existing) {
+        await supabase.from('garden_stats').update({ value }).eq('id', existing.id);
+      } else {
+        await supabase.from('garden_stats').insert({ device_id: deviceId, sensor_name: sensorName, value });
+      }
+    } catch (err) {
+      console.error(`Error updating ${sensorName}:`, err);
     }
   };
 
@@ -446,6 +492,31 @@ Provide a helpful, concise response in markdown format.`;
       }
     }
   }, [sensorData.temp, sensorData.moisture, deviceSettings, appState]);
+
+  // Auto Watering based on Moisture Threshold
+  useEffect(() => {
+    if (appState !== 'DASHBOARD' || !deviceId) return;
+    
+    const checkMoisture = async () => {
+      // Turn pump ON if moisture drops below or equals threshold
+      if (sensorData.moisture <= deviceSettings.moistureThreshold && sensorData.pump === 0) {
+        setSensorData(prev => ({ ...prev, pump: 1 }));
+        await supabase.from('garden_stats').update({ value: 1 }).eq('device_id', deviceId).eq('sensor_name', 'pump');
+      }
+      // Turn pump OFF if moisture is comfortably above threshold (e.g., + 10%)
+      else if (sensorData.moisture >= deviceSettings.moistureThreshold + 10 && sensorData.pump === 1) {
+        setSensorData(prev => ({ ...prev, pump: 0 }));
+        await supabase.from('garden_stats').update({ value: 0 }).eq('device_id', deviceId).eq('sensor_name', 'pump');
+      }
+    };
+    
+    // We use a small timeout to avoid rapid toggling during initial load
+    const timer = setTimeout(() => {
+      checkMoisture();
+    }, 1000);
+    
+    return () => clearTimeout(timer);
+  }, [sensorData.moisture, deviceSettings.moistureThreshold, sensorData.pump, deviceId, appState]);
 
   // Frontend Schedule Checker
   useEffect(() => {
@@ -764,22 +835,47 @@ Provide a helpful, concise response in markdown format.`;
                   <div className="grid grid-cols-2 gap-4">
                     <div className="bg-white rounded-3xl p-6 shadow-sm border border-slate-100 flex flex-col justify-between">
                       <div>
-                        <Droplets className="w-6 h-6 text-slate-800 mb-4" />
-                        <h3 className="font-medium text-slate-800 mb-1">Auto Watering</h3>
-                        <p className="text-xs text-slate-500 mb-6">Watering every 3 hours</p>
+                        <div className="flex items-center justify-between mb-4">
+                          <Droplets className="w-6 h-6 text-slate-800" />
+                          <div className="flex items-center gap-3">
+                            {pumpError && (
+                              <div className="flex items-center gap-1 text-rose-500 bg-rose-50 px-2 py-1 rounded-md" title={pumpError}>
+                                <AlertTriangle className="w-3 h-3" />
+                                <span className="text-[10px] font-medium">Error</span>
+                              </div>
+                            )}
+                            <span className="text-sm font-medium text-slate-700">{sensorData.pump === 1 ? 'On' : 'Off'}</span>
+                            <button 
+                              onClick={togglePump}
+                              className={`w-12 h-6 rounded-full p-1 transition-colors ${sensorData.pump === 1 ? 'bg-blue-500' : 'bg-slate-200'}`}
+                            >
+                              <div className={`w-4 h-4 bg-white rounded-full shadow-sm transition-transform ${sensorData.pump === 1 ? 'translate-x-6' : 'translate-x-0'}`}></div>
+                            </button>
+                          </div>
+                        </div>
+                        <h3 className="font-medium text-slate-800 mb-1">Water Pump</h3>
+                        <p className="text-xs text-slate-500 mb-6">
+                          {deviceSettings.scheduleEnabled === 1 
+                            ? `Scheduled: ${minutesToTimeStr(deviceSettings.scheduleOnTime)} - ${minutesToTimeStr(deviceSettings.scheduleOffTime)}`
+                            : `Auto-triggers below ${deviceSettings.moistureThreshold}% moisture`}
+                        </p>
                       </div>
-                      <div className="flex items-center gap-3">
-                        <button 
-                          onClick={async () => {
-                            const newVal = sensorData.pump === 1 ? 0 : 1;
-                            setSensorData(prev => ({ ...prev, pump: newVal }));
-                            await supabase.from('garden_stats').update({ value: newVal }).eq('device_id', deviceId).eq('sensor_name', 'pump');
-                          }}
-                          className={`w-12 h-6 rounded-full p-1 transition-colors ${sensorData.pump === 1 ? 'bg-blue-500' : 'bg-slate-200'}`}
-                        >
-                          <div className={`w-4 h-4 bg-white rounded-full shadow-sm transition-transform ${sensorData.pump === 1 ? 'translate-x-6' : 'translate-x-0'}`}></div>
-                        </button>
-                        <span className="text-sm font-medium text-slate-700">{sensorData.pump === 1 ? 'On' : 'Off'}</span>
+                      
+                      <div className="mt-2 pt-4 border-t border-slate-100">
+                        <h4 className="text-xs font-medium text-slate-500 mb-3 uppercase tracking-wider">Recent Activity</h4>
+                        <div className="space-y-2">
+                          {pumpHistory.slice(-5).reverse().map((log, idx) => (
+                            <div key={idx} className="flex items-center justify-between text-sm">
+                              <span className="text-slate-500">{log.time}</span>
+                              <span className={`font-medium ${log.status === 1 ? 'text-blue-600' : 'text-slate-400'}`}>
+                                {log.status === 1 ? 'Turned ON' : 'Turned OFF'}
+                              </span>
+                            </div>
+                          ))}
+                          {pumpHistory.length === 0 && (
+                            <p className="text-sm text-slate-400 italic">No recent activity</p>
+                          )}
+                        </div>
                       </div>
                     </div>
                     
@@ -799,30 +895,74 @@ Provide a helpful, concise response in markdown format.`;
                     </div>
                   </div>
 
-                  {/* Fertilizer Application Level */}
-                  <div className="bg-white rounded-3xl p-6 shadow-sm border border-slate-100">
-                    <div className="flex justify-between items-start mb-6">
-                      <div>
-                        <h3 className="font-medium text-slate-800 mb-1">Fertilizer Application Level</h3>
-                        <p className="text-sm text-slate-500">Current dosage intensity</p>
+                  {/* Environment Sensors & Thresholds */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {/* Temperature Card */}
+                    <div className="bg-white rounded-3xl p-6 shadow-sm border border-slate-100 flex flex-col">
+                      <div className="flex justify-between items-start mb-6">
+                        <div>
+                          <h3 className="font-medium text-slate-800 mb-1">Temperature</h3>
+                          <p className="text-sm text-slate-500">Real-time reading</p>
+                        </div>
+                        <div className="w-10 h-10 bg-rose-50 rounded-full flex items-center justify-center">
+                          <Thermometer className="w-5 h-5 text-rose-500" />
+                        </div>
                       </div>
-                      <span className="font-medium text-slate-800 text-sm">Moderate - High</span>
+                      
+                      <div className="flex items-baseline gap-1 mb-6">
+                        <span className="text-4xl font-serif text-slate-900">{sensorData.temp}</span>
+                        <span className="text-lg text-slate-500">°C</span>
+                      </div>
+                      
+                      <div className="mt-auto bg-slate-50 p-4 rounded-2xl border border-slate-100">
+                        <div className="flex justify-between text-xs mb-3">
+                          <span className="text-slate-500">Alert Threshold</span>
+                          <span className="font-medium text-rose-600">{deviceSettings.tempThreshold}°C</span>
+                        </div>
+                        <input 
+                          type="range" 
+                          min="20" max="50" step="1"
+                          value={deviceSettings.tempThreshold}
+                          onChange={(e) => setDeviceSettings(prev => ({ ...prev, tempThreshold: parseInt(e.target.value) }))}
+                          onMouseUp={(e) => updateThreshold('temp_threshold', parseInt((e.target as HTMLInputElement).value))}
+                          onTouchEnd={(e) => updateThreshold('temp_threshold', parseInt((e.target as HTMLInputElement).value))}
+                          className="w-full h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-rose-500"
+                        />
+                      </div>
                     </div>
-                    <div className="flex gap-1 h-12 items-end pt-2">
-                      {Array.from({length: 40}).map((_, i) => {
-                        // Deterministic pseudo-random height
-                        const h = 30 + (Math.sin(i * 0.5) * 20) + (Math.cos(i * 1.2) * 10) + (i === 31 ? 40 : 0);
-                        return (
-                          <div 
-                            key={i} 
-                            className={`flex-1 rounded-full ${i < 20 ? 'bg-amber-500' : i < 32 ? 'bg-emerald-500' : 'bg-emerald-800'}`} 
-                            style={{ 
-                              opacity: i === 31 ? 1 : 0.4, 
-                              height: i === 31 ? '100%' : `${Math.min(100, Math.max(20, h))}%`, 
-                            }}
-                          ></div>
-                        );
-                      })}
+
+                    {/* Soil Moisture Card */}
+                    <div className="bg-white rounded-3xl p-6 shadow-sm border border-slate-100 flex flex-col">
+                      <div className="flex justify-between items-start mb-6">
+                        <div>
+                          <h3 className="font-medium text-slate-800 mb-1">Soil Moisture</h3>
+                          <p className="text-sm text-slate-500">Real-time reading</p>
+                        </div>
+                        <div className="w-10 h-10 bg-blue-50 rounded-full flex items-center justify-center">
+                          <Droplets className="w-5 h-5 text-blue-500" />
+                        </div>
+                      </div>
+                      
+                      <div className="flex items-baseline gap-1 mb-6">
+                        <span className="text-4xl font-serif text-slate-900">{sensorData.moisture}</span>
+                        <span className="text-lg text-slate-500">%</span>
+                      </div>
+                      
+                      <div className="mt-auto bg-slate-50 p-4 rounded-2xl border border-slate-100">
+                        <div className="flex justify-between text-xs mb-3">
+                          <span className="text-slate-500">Watering Threshold</span>
+                          <span className="font-medium text-blue-600">{deviceSettings.moistureThreshold}%</span>
+                        </div>
+                        <input 
+                          type="range" 
+                          min="0" max="100" step="5"
+                          value={deviceSettings.moistureThreshold}
+                          onChange={(e) => setDeviceSettings(prev => ({ ...prev, moistureThreshold: parseInt(e.target.value) }))}
+                          onMouseUp={(e) => updateThreshold('moisture_threshold', parseInt((e.target as HTMLInputElement).value))}
+                          onTouchEnd={(e) => updateThreshold('moisture_threshold', parseInt((e.target as HTMLInputElement).value))}
+                          className="w-full h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-blue-500"
+                        />
+                      </div>
                     </div>
                   </div>
 
@@ -894,7 +1034,7 @@ Provide a helpful, concise response in markdown format.`;
                         <MoreHorizontal className="w-5 h-5 text-slate-400 cursor-pointer hover:text-slate-600" />
                       </div>
                       
-                      <div className="relative z-10 flex-1 flex flex-col gap-4 overflow-y-auto pb-2" ref={chatContainerRef}>
+                      <div className="relative z-10 flex-1 flex flex-col gap-4 overflow-y-auto pb-2 scroll-smooth" ref={chatContainerRef} onScroll={handleChatScroll}>
                         {chatMessages.map((msg, idx) => (
                           <div key={idx} className={`text-sm p-4 rounded-2xl shadow-sm ${msg.role === 'user' ? 'self-end bg-emerald-600 text-white rounded-tr-sm max-w-[90%]' : 'self-start bg-white border border-slate-100 text-slate-700 rounded-tl-sm w-full'}`}>
                             {msg.role === 'user' ? (
@@ -907,14 +1047,32 @@ Provide a helpful, concise response in markdown format.`;
                           </div>
                         ))}
                         {isChatLoading && (
-                          <div className="self-start bg-white border border-slate-100 shadow-sm text-slate-700 text-sm p-4 rounded-2xl rounded-tl-sm w-full flex items-center gap-2">
-                            <div className="w-2 h-2 bg-slate-300 rounded-full animate-bounce"></div>
-                            <div className="w-2 h-2 bg-slate-300 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
-                            <div className="w-2 h-2 bg-slate-300 rounded-full animate-bounce" style={{ animationDelay: '0.4s' }}></div>
+                          <div className="self-start bg-white border border-slate-100 shadow-sm text-slate-700 text-sm p-4 rounded-2xl rounded-tl-sm w-full flex items-center gap-3">
+                            <div className="flex gap-1">
+                              <div className="w-2 h-2 bg-emerald-500 rounded-full animate-bounce"></div>
+                              <div className="w-2 h-2 bg-emerald-500 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+                              <div className="w-2 h-2 bg-emerald-500 rounded-full animate-bounce" style={{ animationDelay: '0.4s' }}></div>
+                            </div>
+                            <span className="text-slate-500 italic text-xs">AI is thinking...</span>
                           </div>
                         )}
                       </div>
                       
+                      <AnimatePresence>
+                        {showScrollToBottom && (
+                          <motion.button
+                            initial={{ opacity: 0, y: 10, scale: 0.8 }}
+                            animate={{ opacity: 1, y: 0, scale: 1 }}
+                            exit={{ opacity: 0, y: 10, scale: 0.8 }}
+                            onClick={scrollToBottom}
+                            className="absolute bottom-24 right-6 z-20 w-10 h-10 bg-white border border-slate-200 shadow-md rounded-full flex items-center justify-center text-slate-500 hover:text-emerald-600 hover:border-emerald-200 transition-colors"
+                            aria-label="Scroll to bottom"
+                          >
+                            <ChevronDown className="w-5 h-5" />
+                          </motion.button>
+                        )}
+                      </AnimatePresence>
+
                       <div className="relative z-10 mt-4 pt-2">
                         <form onSubmit={handleSendMessage} className="relative">
                           <Plus className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 cursor-pointer" />
@@ -971,124 +1129,149 @@ Provide a helpful, concise response in markdown format.`;
                 </button>
               </div>
               
-              <form onSubmit={saveSettings} className="p-6 space-y-6">
-                <div>
-                  <label className="flex items-center justify-between text-sm font-medium text-slate-700 mb-2">
-                    <span>Overheating Threshold (°C)</span>
-                    <span className="text-emerald-600 font-bold">{deviceSettings.tempThreshold}°C</span>
-                  </label>
-                  <input 
-                    type="range" 
-                    min="20" max="50" step="1"
-                    value={deviceSettings.tempThreshold}
-                    onChange={(e) => setDeviceSettings(prev => ({ ...prev, tempThreshold: parseInt(e.target.value) }))}
-                    className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-emerald-600"
-                  />
-                  <p className="text-xs text-slate-500 mt-2">Alert triggers when temperature exceeds this value.</p>
-                </div>
-
-                <div>
-                  <label className="flex items-center justify-between text-sm font-medium text-slate-700 mb-2">
-                    <span>Low Moisture Threshold (%)</span>
-                    <span className="text-blue-600 font-bold">{deviceSettings.moistureThreshold}%</span>
-                  </label>
-                  <input 
-                    type="range" 
-                    min="0" max="100" step="5"
-                    value={deviceSettings.moistureThreshold}
-                    onChange={(e) => setDeviceSettings(prev => ({ ...prev, moistureThreshold: parseInt(e.target.value) }))}
-                    className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-blue-600"
-                  />
-                  <p className="text-xs text-slate-500 mt-2">Alert triggers when moisture falls below this value.</p>
-                </div>
-
-                <div className="flex items-center justify-between p-4 bg-slate-50 rounded-xl border border-slate-100">
-                  <div className="flex items-center gap-3">
-                    <div className={`w-10 h-10 rounded-full flex items-center justify-center ${deviceSettings.notificationsEnabled === 1 ? 'bg-emerald-100 text-emerald-600' : 'bg-slate-200 text-slate-500'}`}>
-                      {deviceSettings.notificationsEnabled === 1 ? <Bell className="w-5 h-5" /> : <BellOff className="w-5 h-5" />}
-                    </div>
+              <form onSubmit={saveSettings} className="p-6 space-y-6 max-h-[80vh] overflow-y-auto">
+                
+                {/* Group 1: Environment Thresholds */}
+                <div className="space-y-4">
+                  <h3 className="text-sm font-bold text-slate-800 uppercase tracking-wider flex items-center gap-2">
+                    <Thermometer className="w-4 h-4 text-orange-500" />
+                    Environment Thresholds
+                  </h3>
+                  <div className="bg-slate-50/50 border border-slate-100 rounded-2xl p-4 space-y-5">
                     <div>
-                      <p className="font-medium text-slate-700 text-sm">Browser Notifications</p>
-                      <p className="text-xs text-slate-500">Receive alerts when app is open</p>
-                    </div>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const newVal = deviceSettings.notificationsEnabled === 1 ? 0 : 1;
-                      setDeviceSettings(prev => ({ ...prev, notificationsEnabled: newVal }));
-                      if (newVal === 1 && typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'default') {
-                        Notification.requestPermission();
-                      }
-                    }}
-                    className={`relative inline-flex h-7 w-12 items-center rounded-full transition-colors focus:outline-none ${
-                      deviceSettings.notificationsEnabled === 1 ? 'bg-emerald-500' : 'bg-slate-300'
-                    }`}
-                  >
-                    <span 
-                      className={`inline-block h-5 w-5 transform rounded-full bg-white transition-transform ${
-                        deviceSettings.notificationsEnabled === 1 ? 'translate-x-6' : 'translate-x-1'
-                      }`} 
-                    />
-                  </button>
-                </div>
-
-                {/* Pump Schedule Section */}
-                <div className="border-t border-slate-100 pt-6">
-                  <div className="flex items-center justify-between mb-4">
-                    <div>
-                      <h3 className="font-medium text-slate-800">Pump Schedule</h3>
-                      <p className="text-xs text-slate-500">Automatically turn pump on/off</p>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => setDeviceSettings(prev => ({ ...prev, scheduleEnabled: prev.scheduleEnabled === 1 ? 0 : 1 }))}
-                      className={`relative inline-flex h-7 w-12 items-center rounded-full transition-colors focus:outline-none ${
-                        deviceSettings.scheduleEnabled === 1 ? 'bg-emerald-500' : 'bg-slate-300'
-                      }`}
-                    >
-                      <span 
-                        className={`inline-block h-5 w-5 transform rounded-full bg-white transition-transform ${
-                          deviceSettings.scheduleEnabled === 1 ? 'translate-x-6' : 'translate-x-1'
-                        }`} 
+                      <label className="flex items-center justify-between text-sm font-medium text-slate-700 mb-2">
+                        <span>Overheating Alert (°C)</span>
+                        <span className="text-orange-600 font-bold">{deviceSettings.tempThreshold}°C</span>
+                      </label>
+                      <input 
+                        type="range" 
+                        min="20" max="50" step="1"
+                        value={deviceSettings.tempThreshold}
+                        onChange={(e) => setDeviceSettings(prev => ({ ...prev, tempThreshold: parseInt(e.target.value) }))}
+                        className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-orange-500"
                       />
-                    </button>
-                  </div>
+                      <p className="text-xs text-slate-500 mt-2">Receive a notification if the temperature exceeds this limit.</p>
+                    </div>
 
-                  <AnimatePresence>
-                    {deviceSettings.scheduleEnabled === 1 && (
-                      <motion.div
-                        initial={{ opacity: 0, height: 0 }}
-                        animate={{ opacity: 1, height: 'auto' }}
-                        exit={{ opacity: 0, height: 0 }}
-                        className="space-y-4 overflow-hidden"
-                      >
-                        <div className="flex items-center gap-4">
-                          <div className="flex-1">
-                            <label className="block text-xs font-medium text-slate-500 mb-1">Turn ON Time</label>
-                            <input 
-                              type="time" 
-                              value={minutesToTimeStr(deviceSettings.scheduleOnTime)}
-                              onChange={(e) => setDeviceSettings(prev => ({ ...prev, scheduleOnTime: timeStrToMinutes(e.target.value) }))}
-                              className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                            />
-                          </div>
-                          <div className="flex-1">
-                            <label className="block text-xs font-medium text-slate-500 mb-1">Turn OFF Time</label>
-                            <input 
-                              type="time" 
-                              value={minutesToTimeStr(deviceSettings.scheduleOffTime)}
-                              onChange={(e) => setDeviceSettings(prev => ({ ...prev, scheduleOffTime: timeStrToMinutes(e.target.value) }))}
-                              className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                            />
-                          </div>
-                        </div>
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
+                    <div className="pt-2 border-t border-slate-100">
+                      <label className="flex items-center justify-between text-sm font-medium text-slate-700 mb-2 mt-2">
+                        <span>Auto-Watering Trigger (%)</span>
+                        <span className="text-blue-600 font-bold">{deviceSettings.moistureThreshold}%</span>
+                      </label>
+                      <input 
+                        type="range" 
+                        min="0" max="100" step="5"
+                        value={deviceSettings.moistureThreshold}
+                        onChange={(e) => setDeviceSettings(prev => ({ ...prev, moistureThreshold: parseInt(e.target.value) }))}
+                        className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-blue-500"
+                      />
+                      <p className="text-xs text-slate-500 mt-2">The water pump will automatically turn on when soil moisture drops below this level.</p>
+                    </div>
+                  </div>
                 </div>
 
-                <div className="pt-2">
+                {/* Group 2: Automation & Schedules */}
+                <div className="space-y-4">
+                  <h3 className="text-sm font-bold text-slate-800 uppercase tracking-wider flex items-center gap-2">
+                    <Power className="w-4 h-4 text-emerald-500" />
+                    Automation & Schedules
+                  </h3>
+                  <div className="bg-slate-50/50 border border-slate-100 rounded-2xl p-4">
+                    <div className="flex items-center justify-between mb-2">
+                      <div>
+                        <h4 className="font-medium text-slate-700 text-sm">Scheduled Watering</h4>
+                        <p className="text-xs text-slate-500">Override auto-watering with a fixed daily schedule.</p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setDeviceSettings(prev => ({ ...prev, scheduleEnabled: prev.scheduleEnabled === 1 ? 0 : 1 }))}
+                        className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${
+                          deviceSettings.scheduleEnabled === 1 ? 'bg-emerald-500' : 'bg-slate-300'
+                        }`}
+                      >
+                        <span 
+                          className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                            deviceSettings.scheduleEnabled === 1 ? 'translate-x-6' : 'translate-x-1'
+                          }`} 
+                        />
+                      </button>
+                    </div>
+
+                    <AnimatePresence>
+                      {deviceSettings.scheduleEnabled === 1 && (
+                        <motion.div
+                          initial={{ opacity: 0, height: 0 }}
+                          animate={{ opacity: 1, height: 'auto' }}
+                          exit={{ opacity: 0, height: 0 }}
+                          className="overflow-hidden pt-3 border-t border-slate-100 mt-3"
+                        >
+                          <div className="flex items-center gap-4">
+                            <div className="flex-1">
+                              <label className="block text-xs font-medium text-slate-600 mb-1">Turn ON Time</label>
+                              <input 
+                                type="time" 
+                                value={minutesToTimeStr(deviceSettings.scheduleOnTime)}
+                                onChange={(e) => setDeviceSettings(prev => ({ ...prev, scheduleOnTime: timeStrToMinutes(e.target.value) }))}
+                                className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                              />
+                            </div>
+                            <div className="flex-1">
+                              <label className="block text-xs font-medium text-slate-600 mb-1">Turn OFF Time</label>
+                              <input 
+                                type="time" 
+                                value={minutesToTimeStr(deviceSettings.scheduleOffTime)}
+                                onChange={(e) => setDeviceSettings(prev => ({ ...prev, scheduleOffTime: timeStrToMinutes(e.target.value) }))}
+                                className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                              />
+                            </div>
+                          </div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </div>
+                </div>
+
+                {/* Group 3: Preferences */}
+                <div className="space-y-4">
+                  <h3 className="text-sm font-bold text-slate-800 uppercase tracking-wider flex items-center gap-2">
+                    <Bell className="w-4 h-4 text-indigo-500" />
+                    Preferences
+                  </h3>
+                  <div className="bg-slate-50/50 border border-slate-100 rounded-2xl p-4">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className={`w-10 h-10 rounded-full flex items-center justify-center ${deviceSettings.notificationsEnabled === 1 ? 'bg-indigo-100 text-indigo-600' : 'bg-slate-200 text-slate-500'}`}>
+                          {deviceSettings.notificationsEnabled === 1 ? <Bell className="w-5 h-5" /> : <BellOff className="w-5 h-5" />}
+                        </div>
+                        <div>
+                          <p className="font-medium text-slate-700 text-sm">Browser Notifications</p>
+                          <p className="text-xs text-slate-500">Receive alerts when the app is open.</p>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const newVal = deviceSettings.notificationsEnabled === 1 ? 0 : 1;
+                          setDeviceSettings(prev => ({ ...prev, notificationsEnabled: newVal }));
+                          if (newVal === 1 && typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'default') {
+                            Notification.requestPermission();
+                          }
+                        }}
+                        className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${
+                          deviceSettings.notificationsEnabled === 1 ? 'bg-indigo-500' : 'bg-slate-300'
+                        }`}
+                      >
+                        <span 
+                          className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                            deviceSettings.notificationsEnabled === 1 ? 'translate-x-6' : 'translate-x-1'
+                          }`} 
+                        />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="pt-4 border-t border-slate-100">
                   <AnimatePresence>
                     {saveSuccessMessage && (
                       <motion.div
