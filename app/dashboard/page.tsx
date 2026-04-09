@@ -132,25 +132,29 @@ export default function SmartGardenApp() {
     setIsChatLoading(true);
 
     try {
-      const { GoogleGenAI } = await import('@google/genai');
-      const ai = new GoogleGenAI({ apiKey: process.env.NEXT_PUBLIC_GEMINI_API_KEY });
-      
-      const prompt = `You are an AI Assistant for a Smart Garden dashboard. 
-The current sensor data is: Temperature: ${sensorData.temp}°C, Soil Moisture: ${sensorData.moisture}%, Pump Status: ${sensorData.pump === 1 ? 'ON' : 'OFF'}.
-The user is asking: "${userMessage}"
-Provide a helpful, concise response in markdown format.`;
-
-      const response = await ai.models.generateContent({
-        model: 'gemini-3-flash-preview',
-        contents: prompt,
+      const response = await fetch('/api/chat', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          message: userMessage,
+          sensorData: sensorData
+        }),
       });
 
-      if (response.text) {
-        setChatMessages(prev => [...prev, { role: 'assistant', content: response.text! }]);
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to get response from AI server');
       }
-    } catch (error) {
+
+      if (data.text) {
+        setChatMessages(prev => [...prev, { role: 'assistant', content: data.text }]);
+      }
+    } catch (error: any) {
       console.error('Error generating AI response:', error);
-      setChatMessages(prev => [...prev, { role: 'assistant', content: 'Sorry, I encountered an error while processing your request.' }]);
+      setChatMessages(prev => [...prev, { role: 'assistant', content: `Sorry, I encountered an error: ${error.message}` }]);
     } finally {
       setIsChatLoading(false);
     }
