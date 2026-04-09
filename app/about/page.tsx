@@ -3,6 +3,51 @@
 import { motion } from 'motion/react';
 import Image from 'next/image';
 import { CheckCircle2, Mail, MapPin, Phone } from 'lucide-react';
+import { useState, useEffect } from 'react';
+
+function TeamList() {
+  const [team, setTeam] = useState<any[]>([]);
+
+  useEffect(() => {
+    const savedTeam = localStorage.getItem('smartgarden_team');
+    if (savedTeam) {
+      try {
+        setTeam(JSON.parse(savedTeam));
+      } catch (e) {
+        setTeam(getDefaultTeam());
+      }
+    } else {
+      setTeam(getDefaultTeam());
+    }
+  }, []);
+
+  const getDefaultTeam = () => [
+    { id: '1', name: 'Ivan Prasetya', role: 'Informatics / Developer', img: 'https://ui-avatars.com/api/?name=Ivan+Prasetya&background=059669&color=fff&size=300' },
+    { id: '2', name: 'Medwin Deporangga', role: 'Developer / Engineer', img: 'https://ui-avatars.com/api/?name=Medwin+Deporangga&background=0f766e&color=fff&size=300' }
+  ];
+
+  return (
+    <div className={`grid gap-8 max-w-5xl mx-auto ${team.length === 1 ? 'grid-cols-1 max-w-sm' : team.length === 2 ? 'md:grid-cols-2 max-w-3xl' : 'md:grid-cols-3'}`}>
+      {team.map((member, i) => (
+        <motion.div 
+          key={member.id || i}
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.5, delay: i * 0.1 }}
+          className="text-center"
+        >
+          <div className="relative w-48 h-48 mx-auto mb-6 rounded-full overflow-hidden shadow-lg border-4 border-white bg-slate-100">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={member.img} alt={member.name} className="w-full h-full object-cover" />
+          </div>
+          <h3 className="text-xl font-bold text-slate-900">{member.name}</h3>
+          <p className="text-emerald-600 font-medium">{member.role}</p>
+        </motion.div>
+      ))}
+    </div>
+  );
+}
 
 export default function AboutPage() {
   const values = [
@@ -90,28 +135,7 @@ export default function AboutPage() {
             </p>
           </div>
 
-          <div className="grid md:grid-cols-3 gap-8">
-            {[
-              { name: 'Ahmad Reza', role: 'Founder & CEO', img: 'https://i.pravatar.cc/300?u=reza' },
-              { name: 'Sarah Wijaya', role: 'Head of Engineering', img: 'https://i.pravatar.cc/300?u=sarah' },
-              { name: 'Bima Satria', role: 'IoT Specialist', img: 'https://i.pravatar.cc/300?u=bima' }
-            ].map((member, i) => (
-              <motion.div 
-                key={i}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ duration: 0.5, delay: i * 0.1 }}
-                className="text-center"
-              >
-                <div className="relative w-48 h-48 mx-auto mb-6 rounded-full overflow-hidden shadow-lg border-4 border-white">
-                  <Image src={member.img} alt={member.name} fill className="object-cover" referrerPolicy="no-referrer" />
-                </div>
-                <h3 className="text-xl font-bold text-slate-900">{member.name}</h3>
-                <p className="text-emerald-600 font-medium">{member.role}</p>
-              </motion.div>
-            ))}
-          </div>
+          <TeamList />
         </div>
       </div>
 

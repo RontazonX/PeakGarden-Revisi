@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import { GoogleGenAI } from '@google/genai';
 
+export const runtime = 'edge';
+
 export async function POST(req: Request) {
   try {
     const { message, sensorData } = await req.json();
@@ -18,7 +20,7 @@ export async function POST(req: Request) {
     const ai = new GoogleGenAI({ apiKey });
 
     const prompt = `You are an advanced AI Assistant for a Smart Garden dashboard.
-The current real-time sensor data is:
+The current real-time sensor data is:i
 - Temperature: ${sensorData.temp}°C
 - Soil Moisture: ${sensorData.moisture}%
 - Pump Status: ${sensorData.pump === 1 ? 'ON' : 'OFF'}
