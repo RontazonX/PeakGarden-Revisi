@@ -1,9 +1,41 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion } from 'motion/react';
-import { ArrowLeft, Users, Plus, Trash2, Save, Upload, Image as ImageIcon, Lock, LogOut } from 'lucide-react';
+import { ArrowLeft, Users, Plus, Trash2, Save, Upload, Image as ImageIcon, Lock, LogOut, X } from 'lucide-react';
+import Cropper from 'react-easy-crop';
+
+// Utility to create image and extract cropped area
+const createImage = (url: string): Promise<HTMLImageElement> =>
+  new Promise((resolve, reject) => {
+    const image = new Image();
+    image.addEventListener('load', () => resolve(image));
+    image.addEventListener('error', (error) => reject(error));
+    image.setAttribute('crossOrigin', 'anonymous');
+    image.src = url;
+  });
+
+async function getCroppedImg(imageSrc: string, pixelCrop: any): Promise<string | null> {
+  const image = await createImage(imageSrc);
+  const canvas = document.createElement('canvas');
+  const ctx = canvas.getContext('2d');
+
+  if (!ctx) return null;
+
+  canvas.width = image.width;
+  canvas.height = image.height;
+  ctx.drawImage(image, 0, 0);
+
+  const data = ctx.getImageData(pixelCrop.x, pixelCrop.y, pixelCrop.width, pixelCrop.height);
+
+  canvas.width = pixelCrop.width;
+  canvas.height = pixelCrop.height;
+  ctx.putImageData(data, 0, 0);
+
+  // Compress slightly to save localStorage space
+  return canvas.toDataURL('image/jpeg', 0.8);
+}
 
 interface TeamMember {
   id: string;
@@ -23,6 +55,14 @@ export default function AdminPage() {
   const [isSaving, setIsSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
   const fileInputRefs = useRef<{ [key: string]: HTMLInputElement | null }>({});
+
+  // Cropper State
+  const [cropModalOpen, setCropModalOpen] = useState(false);
+  const [imageToCrop, setImageToCrop] = useState<string | null>(null);
+  const [activeMemberId, setActiveMemberId] = useState<string | null>(null);
+  const [crop, setCrop] = useState({ x: 0, y: 0 });
+  const [zoom, setZoom] = useState(1);
+  const [croppedAreaPixels, setCroppedAreaPixels] = useState<any>(null);
 
   useEffect(() => {
     // Check session storage for admin auth
@@ -101,18 +141,52 @@ export default function AdminPage() {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // Check file size (limit to 500KB to avoid localStorage quota issues)
-    if (file.size > 500 * 1024) {
-      alert('Ukuran foto terlalu besar. Maksimal 500KB.');
+    // Check file size (limit to 2MB for initial upload before crop)
+    if (file.size > 2 * 1024 * 1024) {
+      alert('Ukuran foto terlalu besar. Maksimal 2MB.');
       return;
     }
 
     const reader = new FileReader();
     reader.onloadend = () => {
-      const base64String = reader.result as string;
-      handleChange(id, 'img', base64String);
+      setImageToCrop(reader.result as string);
+      setActiveMemberId(id);
+      setCropModalOpen(true);
+      setCrop({ x: 0, y: 0 });
+      setZoom(1);
     };
     reader.readAsDataURL(file);
+    
+    // Reset input
+    if (fileInputRefs.current[id]) {
+      fileInputRefs.current[id]!.value = '';
+    }
+  };
+
+  const onCropComplete = useCallback((croppedArea: any, croppedAreaPixels: any) => {
+    setCroppedAreaPixels(croppedAreaPixels);
+  }, []);
+
+  const handleCropConfirm = async () => {
+    if (!imageToCrop || !croppedAreaPixels || !activeMemberId) return;
+    
+    try {
+      const croppedImageBase64 = await getCroppedImg(imageToCrop, croppedAreaPixels);
+      if (croppedImageBase64) {
+        // Check final size (approximate base64 size)
+        if (croppedImageBase64.length > 500 * 1024 * 1.37) {
+          alert('Hasil crop masih terlalu besar. Coba perkecil area crop atau gunakan foto lain.');
+        } else {
+          handleChange(activeMemberId, 'img', croppedImageBase64);
+        }
+      }
+      setCropModalOpen(false);
+      setImageToCrop(null);
+      setActiveMemberId(null);
+    } catch (e) {
+      console.error(e);
+      alert('Gagal memotong gambar');
+    }
   };
 
   if (!isAuthenticated) {
@@ -175,6 +249,62 @@ export default function AdminPage() {
 
   return (
     <div className="min-h-screen bg-slate-50 pt-12 pb-12">
+      {/* Crop Modal */}
+      {cropModalOpen && imageToCrop && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4">
+          <div className="bg-white rounded-3xl w-full max-w-lg overflow-hidden flex flex-col shadow-2xl">
+            <div className="p-4 border-b border-slate-100 flex justify-between items-center">
+              <h3 className="font-bold text-lg text-slate-900">Atur Posisi Foto</h3>
+              <button onClick={() => setCropModalOpen(false)} className="p-2 hover:bg-slate-100 rounded-full text-slate-500 transition-colors">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="relative h-80 w-full bg-slate-900">
+              <Cropper
+                image={imageToCrop}
+                crop={crop}
+                zoom={zoom}
+                aspect={1}
+                cropShape="round"
+                showGrid={false}
+                onCropChange={setCrop}
+                onCropComplete={onCropComplete}
+                onZoomChange={setZoom}
+              />
+            </div>
+            <div className="p-6 space-y-4">
+              <div>
+                <label className="text-sm font-medium text-slate-700 mb-2 block">Perbesar (Zoom)</label>
+                <input
+                  type="range"
+                  value={zoom}
+                  min={1}
+                  max={3}
+                  step={0.1}
+                  aria-labelledby="Zoom"
+                  onChange={(e) => setZoom(Number(e.target.value))}
+                  className="w-full accent-emerald-600"
+                />
+              </div>
+              <div className="flex gap-3 pt-2">
+                <button 
+                  onClick={() => setCropModalOpen(false)}
+                  className="flex-1 py-3 px-4 border border-slate-200 text-slate-700 rounded-xl font-medium hover:bg-slate-50 transition-colors"
+                >
+                  Batal
+                </button>
+                <button 
+                  onClick={handleCropConfirm}
+                  className="flex-1 py-3 px-4 bg-emerald-600 text-white rounded-xl font-medium hover:bg-emerald-700 transition-colors shadow-sm shadow-emerald-600/20"
+                >
+                  Terapkan
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
         
         <div className="mb-8 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
