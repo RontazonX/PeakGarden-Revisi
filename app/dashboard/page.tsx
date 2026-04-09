@@ -870,65 +870,56 @@ Provide a helpful, concise response in markdown format.`;
                     </div>
                   </div>
 
-                  {/* Auto Watering & pH Balancer */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div className="bg-white rounded-3xl p-6 shadow-sm border border-slate-100 flex flex-col justify-between">
-                      <div>
-                        <div className="flex items-center justify-between mb-4">
-                          <Droplets className="w-6 h-6 text-slate-800" />
-                          <div className="flex items-center gap-3">
-                            <span className="text-sm font-medium text-slate-700">{sensorData.pump === 1 ? 'On' : 'Off'}</span>
-                            <button 
-                              onClick={async () => {
-                                const newVal = sensorData.pump === 1 ? 0 : 1;
-                                setSensorData(prev => ({ ...prev, pump: newVal }));
-                                await supabase.from('garden_stats').update({ value: newVal }).eq('device_id', deviceId).eq('sensor_name', 'pump');
-                              }}
-                              className={`w-12 h-6 rounded-full p-1 transition-colors ${sensorData.pump === 1 ? 'bg-blue-500' : 'bg-slate-200'}`}
-                            >
-                              <div className={`w-4 h-4 bg-white rounded-full shadow-sm transition-transform ${sensorData.pump === 1 ? 'translate-x-6' : 'translate-x-0'}`}></div>
-                            </button>
-                          </div>
-                        </div>
-                        <h3 className="font-medium text-slate-800 mb-1">Water Pump</h3>
-                        <p className="text-xs text-slate-500 mb-6">
-                          {deviceSettings.scheduleEnabled === 1 
-                            ? `Scheduled: ${minutesToTimeStr(deviceSettings.scheduleOnTime)} - ${minutesToTimeStr(deviceSettings.scheduleOffTime)}`
-                            : `Auto-triggers below ${deviceSettings.moistureThreshold}% moisture`}
-                        </p>
-                      </div>
-                      
-                      <div className="mt-2 pt-4 border-t border-slate-100">
-                        <h4 className="text-xs font-medium text-slate-500 mb-3 uppercase tracking-wider">Recent Activity</h4>
-                        <div className="space-y-2">
-                          {pumpHistory.slice(-5).reverse().map((log, idx) => (
-                            <div key={idx} className="flex items-center justify-between text-sm">
-                              <span className="text-slate-500">{log.time}</span>
-                              <span className={`font-medium ${log.status === 1 ? 'text-blue-600' : 'text-slate-400'}`}>
-                                {log.status === 1 ? 'Turned ON' : 'Turned OFF'}
-                              </span>
-                            </div>
-                          ))}
-                          {pumpHistory.length === 0 && (
-                            <p className="text-sm text-slate-400 italic">No recent activity</p>
+                  {/* Auto Watering */}
+                  <div className="bg-white rounded-3xl p-6 shadow-sm border border-slate-100 flex flex-col justify-between">
+                    <div>
+                      <div className="flex items-center justify-between mb-4">
+                        <div className={`relative flex items-center justify-center w-12 h-12 rounded-2xl transition-colors ${sensorData.pump === 1 ? 'bg-blue-50' : 'bg-slate-50'}`}>
+                          <Droplets className={`w-6 h-6 transition-colors ${sensorData.pump === 1 ? 'text-blue-500' : 'text-slate-400'}`} fill={sensorData.pump === 1 ? "currentColor" : "none"} />
+                          {sensorData.pump === 1 && (
+                            <span className="absolute -top-1 -right-1 flex h-3 w-3">
+                              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
+                              <span className="relative inline-flex rounded-full h-3 w-3 bg-blue-500"></span>
+                            </span>
                           )}
                         </div>
+                        <div className="flex items-center gap-3">
+                          <span className="text-sm font-medium text-slate-700">{sensorData.pump === 1 ? 'On' : 'Off'}</span>
+                          <button 
+                            onClick={async () => {
+                              const newVal = sensorData.pump === 1 ? 0 : 1;
+                              setSensorData(prev => ({ ...prev, pump: newVal }));
+                              await supabase.from('garden_stats').update({ value: newVal }).eq('device_id', deviceId).eq('sensor_name', 'pump');
+                            }}
+                            className={`w-12 h-6 rounded-full p-1 transition-colors ${sensorData.pump === 1 ? 'bg-blue-500' : 'bg-slate-200'}`}
+                          >
+                            <div className={`w-4 h-4 bg-white rounded-full shadow-sm transition-transform ${sensorData.pump === 1 ? 'translate-x-6' : 'translate-x-0'}`}></div>
+                          </button>
+                        </div>
                       </div>
+                      <h3 className="font-medium text-slate-800 mb-1">Water Pump</h3>
+                      <p className="text-xs text-slate-500 mb-6">
+                        {deviceSettings.scheduleEnabled === 1 
+                          ? `Scheduled: ${minutesToTimeStr(deviceSettings.scheduleOnTime)} - ${minutesToTimeStr(deviceSettings.scheduleOffTime)}`
+                          : `Auto-triggers below ${deviceSettings.moistureThreshold}% moisture`}
+                      </p>
                     </div>
                     
-                    <div className="bg-white rounded-3xl p-6 shadow-sm border border-slate-100 relative overflow-hidden flex flex-col justify-between">
-                      <div>
-                        <FlaskConical className="w-6 h-6 text-slate-800 mb-4" />
-                        <h3 className="font-medium text-slate-800 mb-1">pH Balancer</h3>
-                        <p className="text-xs text-slate-500 mb-6">Status: Stable</p>
+                    <div className="mt-2 pt-4 border-t border-slate-100">
+                      <h4 className="text-xs font-medium text-slate-500 mb-3 uppercase tracking-wider">Recent Activity</h4>
+                      <div className="space-y-2">
+                        {pumpHistory.slice(-5).reverse().map((log, idx) => (
+                          <div key={idx} className="flex items-center justify-between text-sm">
+                            <span className="text-slate-500">{log.time}</span>
+                            <span className={`font-medium ${log.status === 1 ? 'text-blue-600' : 'text-slate-400'}`}>
+                              {log.status === 1 ? 'Turned ON' : 'Turned OFF'}
+                            </span>
+                          </div>
+                        ))}
+                        {pumpHistory.length === 0 && (
+                          <p className="text-sm text-slate-400 italic">No recent activity</p>
+                        )}
                       </div>
-                      <div className="flex items-center gap-3">
-                        <button className="w-12 h-6 rounded-full p-1 bg-blue-500 transition-colors cursor-default">
-                          <div className="w-4 h-4 bg-white rounded-full shadow-sm translate-x-6"></div>
-                        </button>
-                        <span className="text-sm font-medium text-slate-700">Auto</span>
-                      </div>
-                      <div className="absolute bottom-6 right-6 text-4xl font-serif text-slate-900">6.4</div>
                     </div>
                   </div>
 
@@ -946,9 +937,17 @@ Provide a helpful, concise response in markdown format.`;
                         </div>
                       </div>
                       
-                      <div className="flex items-baseline gap-1 mb-6">
-                        <span className="text-4xl font-serif text-slate-900">{sensorData.temp}</span>
-                        <span className="text-lg text-slate-500">°C</span>
+                      <div className="flex items-center gap-3 flex-wrap mb-6">
+                        <div className="flex items-baseline gap-1">
+                          <span className={`text-4xl font-serif ${sensorData.temp > deviceSettings.tempThreshold ? 'text-rose-600' : 'text-slate-900'}`}>{sensorData.temp}</span>
+                          <span className="text-lg text-slate-500">°C</span>
+                        </div>
+                        {sensorData.temp > deviceSettings.tempThreshold && (
+                          <div className="flex items-center gap-1 px-2.5 py-1 bg-rose-50 text-rose-600 rounded-lg text-xs font-medium animate-pulse border border-rose-100">
+                            <AlertTriangle className="w-3.5 h-3.5" />
+                            <span>Too Hot</span>
+                          </div>
+                        )}
                       </div>
                       
                       <div className="mt-auto bg-slate-50 p-4 rounded-2xl border border-slate-100">
@@ -980,9 +979,17 @@ Provide a helpful, concise response in markdown format.`;
                         </div>
                       </div>
                       
-                      <div className="flex items-baseline gap-1 mb-6">
-                        <span className="text-4xl font-serif text-slate-900">{sensorData.moisture}</span>
-                        <span className="text-lg text-slate-500">%</span>
+                      <div className="flex items-center gap-3 flex-wrap mb-6">
+                        <div className="flex items-baseline gap-1">
+                          <span className={`text-4xl font-serif ${sensorData.moisture < deviceSettings.moistureThreshold ? 'text-rose-600' : 'text-slate-900'}`}>{sensorData.moisture}</span>
+                          <span className="text-lg text-slate-500">%</span>
+                        </div>
+                        {sensorData.moisture < deviceSettings.moistureThreshold && (
+                          <div className="flex items-center gap-1 px-2.5 py-1 bg-rose-50 text-rose-600 rounded-lg text-xs font-medium animate-pulse border border-rose-100">
+                            <AlertTriangle className="w-3.5 h-3.5" />
+                            <span>Too Dry</span>
+                          </div>
+                        )}
                       </div>
                       
                       <div className="mt-auto bg-slate-50 p-4 rounded-2xl border border-slate-100">
