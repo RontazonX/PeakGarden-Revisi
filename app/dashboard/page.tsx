@@ -228,6 +228,39 @@ Provide a helpful, concise response in markdown format.`;
     setLoginError('');
 
     try {
+      if (!userProfile?.email) {
+        setLoginError('You must be logged in to connect a device.');
+        setIsLoading(false);
+        return;
+      }
+
+      // Check device ownership
+      const ownerKey = `${deviceId}_owner`;
+      const { data: ownerData, error: ownerError } = await supabase
+        .from('garden_stats')
+        .select('sensor_name')
+        .eq('device_id', ownerKey)
+        .limit(1);
+
+      if (ownerError) throw ownerError;
+
+      if (ownerData && ownerData.length > 0) {
+        // Device is registered
+        const registeredEmail = ownerData[0].sensor_name;
+        if (registeredEmail !== userProfile.email) {
+          setLoginError('This device is already registered to another account.');
+          setIsLoading(false);
+          return;
+        }
+      } else {
+        // Device is not registered, register it to current user
+        const { error: regError } = await supabase
+          .from('garden_stats')
+          .insert({ device_id: ownerKey, sensor_name: userProfile.email, value: 1 });
+        if (regError) throw regError;
+        console.log('Device registered successfully to', userProfile.email);
+      }
+
       // Test connection by fetching data for this specific device
       const { data, error } = await supabase
         .from('garden_stats')
@@ -351,9 +384,7 @@ Provide a helpful, concise response in markdown format.`;
   const togglePump = async () => {
     if (!deviceId) return;
     
-    setPumpError(null);
     const newValue = sensorData.pump === 1 ? 0 : 1;
-    const previousValue = sensorData.pump;
     
     // Optimistic update
     setSensorData(prev => ({ ...prev, pump: newValue }));
@@ -377,13 +408,7 @@ Provide a helpful, concise response in markdown format.`;
 
       console.error('Error updating pump:', errorMessage, err);
       // Revert on error
-      setSensorData(prev => ({ ...prev, pump: previousValue }));
-      setPumpError('Failed to update pump status');
-      
-      // Clear error after 3 seconds
-      setTimeout(() => {
-        setPumpError(null);
-      }, 3000);
+      setSensorData(prev => ({ ...prev, pump: newValue === 1 ? 0 : 1 }));
     }
   };
 
@@ -700,86 +725,100 @@ Provide a helpful, concise response in markdown format.`;
             key="dashboard"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            className="min-h-screen flex flex-row"
+            className="min-h-screen flex flex-col md:flex-row"
           >
-            {/* Sidebar */}
-            <aside className="w-20 bg-[#F3F4F6] border-r border-slate-200 flex flex-col items-center py-6 gap-8 shrink-0 h-screen sticky top-0 z-50">
-              {/* Logo */}
-              <div className="w-12 h-12 bg-emerald-700 rounded-2xl flex items-center justify-center text-white shadow-lg shadow-emerald-700/20">
+            {/* Sidebar / Bottom Nav */}
+            <aside className="fixed bottom-0 left-0 right-0 h-16 bg-white border-t border-slate-200 flex flex-row items-center justify-around z-50 md:relative md:w-20 md:h-screen md:bg-[#F3F4F6] md:border-t-0 md:border-r md:flex-col md:py-6 md:gap-8 shrink-0">
+              {/* Logo (Hidden on mobile) */}
+              <div className="hidden md:flex w-12 h-12 bg-emerald-700 rounded-2xl items-center justify-center text-white shadow-lg shadow-emerald-700/20">
                 <Sprout className="w-6 h-6" />
               </div>
               
               {/* Navigation Icons */}
-              <nav className="flex flex-col gap-4 w-full items-center flex-1">
+              <nav className="flex flex-row md:flex-col gap-2 md:gap-4 w-full items-center justify-around md:justify-start flex-1 px-2 md:px-0">
                 <button 
                   onClick={() => router.push('/dashboard')}
-                  className="w-12 h-12 bg-white rounded-2xl shadow-sm flex items-center justify-center text-emerald-600 transition-transform hover:scale-105"
+                  className="w-10 h-10 md:w-12 md:h-12 bg-emerald-50 md:bg-white rounded-xl md:rounded-2xl shadow-sm flex items-center justify-center text-emerald-600 transition-transform hover:scale-105"
                   title="Dashboard"
                 >
                   <LayoutGrid className="w-5 h-5" />
                 </button>
                 <button 
                   onClick={() => router.push('/dashboard/analytics')}
-                  className="w-12 h-12 text-slate-400 hover:text-emerald-600 hover:bg-white/50 rounded-2xl flex items-center justify-center transition-all"
+                  className="w-10 h-10 md:w-12 md:h-12 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 md:hover:bg-white/50 rounded-xl md:rounded-2xl flex items-center justify-center transition-all"
                   title="Analytics"
                 >
                   <LineChartIcon className="w-5 h-5" />
                 </button>
                 <button 
                   onClick={() => setShowSettings(true)}
-                  className="w-12 h-12 text-slate-400 hover:text-emerald-600 hover:bg-white/50 rounded-2xl flex items-center justify-center transition-all"
+                  className="w-10 h-10 md:w-12 md:h-12 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 md:hover:bg-white/50 rounded-xl md:rounded-2xl flex items-center justify-center transition-all"
                   title="Settings"
                 >
                   <Settings className="w-5 h-5" />
                 </button>
+                
+                <button 
+                  onClick={handleDisconnect}
+                  className="w-10 h-10 md:w-12 md:h-12 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-xl md:rounded-2xl flex items-center justify-center transition-all md:mt-auto"
+                  title="Disconnect Device"
+                >
+                  <LogOut className="w-5 h-5" />
+                </button>
               </nav>
-              
-              <button 
-                onClick={handleDisconnect}
-                className="w-12 h-12 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-2xl flex items-center justify-center transition-all mt-auto"
-                title="Disconnect Device"
-              >
-                <LogOut className="w-5 h-5" />
-              </button>
             </aside>
 
             {/* Main Content Area */}
-            <main className="flex-1 p-8 h-screen overflow-y-auto w-full">
+            <main className="flex-1 p-4 md:p-8 h-[calc(100vh-4rem)] md:h-screen overflow-y-auto w-full pb-24 md:pb-8">
               
               {/* Header */}
-              <header className="flex justify-between items-start mb-8">
-                <div className="flex items-center gap-4">
+              <header className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6 md:mb-8">
+                <div className="flex items-center gap-3 md:gap-4">
                   <button 
                     onClick={() => router.push('/')}
-                    className="w-12 h-12 bg-white border border-slate-200 rounded-full flex items-center justify-center text-slate-600 hover:bg-slate-50 transition-colors shadow-sm shrink-0"
+                    className="w-10 h-10 md:w-12 md:h-12 bg-white border border-slate-200 rounded-full flex items-center justify-center text-slate-600 hover:bg-slate-50 transition-colors shadow-sm shrink-0"
                     title="Kembali ke Beranda"
                   >
-                    <ArrowLeft className="w-5 h-5" />
+                    <ArrowLeft className="w-4 h-4 md:w-5 md:h-5" />
                   </button>
                   <div>
-                    <h1 className="text-3xl font-serif text-slate-900 mb-1">Hi, {userProfile?.name?.split(' ')[0] || 'User'}!</h1>
-                    <p className="text-slate-500 text-sm">Your farm performance is stable. Here&apos;s today&apos;s overview.</p>
+                    <div className="flex items-center gap-3 mb-0.5 md:mb-1">
+                      <h1 className="text-2xl md:text-3xl font-serif text-slate-900">Hi, {userProfile?.name?.split(' ')[0] || 'User'}!</h1>
+                      <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] md:text-xs font-medium border ${
+                        deviceStatus === 'online' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 
+                        deviceStatus === 'offline' ? 'bg-rose-50 text-rose-700 border-rose-200' : 
+                        'bg-slate-50 text-slate-600 border-slate-200'
+                      }`}>
+                        <div className={`w-1.5 h-1.5 rounded-full ${
+                          deviceStatus === 'online' ? 'bg-emerald-500 animate-pulse' : 
+                          deviceStatus === 'offline' ? 'bg-rose-500' : 
+                          'bg-slate-400'
+                        }`}></div>
+                        {deviceStatus === 'online' ? 'Device Online' : deviceStatus === 'offline' ? 'Device Offline' : 'Connecting...'}
+                      </div>
+                    </div>
+                    <p className="text-slate-500 text-xs md:text-sm">Your farm performance is stable. Here&apos;s today&apos;s overview.</p>
                   </div>
                 </div>
                 
-                <div className="flex items-center gap-3 bg-white p-1.5 pr-4 rounded-full shadow-sm border border-slate-100 cursor-pointer hover:shadow-md transition-shadow">
-                  <div className="w-10 h-10 bg-slate-900 rounded-full flex items-center justify-center text-white overflow-hidden">
+                <div className="flex items-center gap-3 bg-white p-1.5 pr-4 rounded-full shadow-sm border border-slate-100 cursor-pointer hover:shadow-md transition-shadow self-end sm:self-auto">
+                  <div className="w-8 h-8 md:w-10 md:h-10 bg-slate-900 rounded-full flex items-center justify-center text-white overflow-hidden shrink-0">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img src={userProfile?.avatarUrl || "https://i.pravatar.cc/150?u=user"} alt="Profile" className="w-full h-full object-cover" />
                   </div>
                   <div className="flex flex-col justify-center">
-                    <p className="text-sm font-semibold text-slate-900 leading-tight">{userProfile?.name || 'User'}</p>
-                    <p className="text-[10px] text-slate-500 leading-tight">{userProfile?.email || 'user@example.com'}</p>
+                    <p className="text-xs md:text-sm font-semibold text-slate-900 leading-tight">{userProfile?.name || 'User'}</p>
+                    <p className="text-[9px] md:text-[10px] text-slate-500 leading-tight">{userProfile?.email || 'user@example.com'}</p>
                   </div>
-                  <ChevronDown className="w-4 h-4 text-slate-400 ml-2" />
+                  <ChevronDown className="w-3 h-3 md:w-4 md:h-4 text-slate-400 ml-1 md:ml-2" />
                 </div>
               </header>
 
               {/* Dashboard Grid */}
-              <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 max-w-[1600px] mx-auto pb-12">
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 md:gap-6 max-w-[1600px] mx-auto pb-4 md:pb-12">
                 
                 {/* Left Column */}
-                <div className="xl:col-span-4 flex flex-col gap-6">
+                <div className="lg:col-span-5 xl:col-span-4 flex flex-col gap-4 md:gap-6">
                   
                   {/* Weather Card */}
                   <div className="bg-white rounded-3xl p-6 shadow-sm border border-slate-100 flex flex-col justify-between">
@@ -806,12 +845,12 @@ Provide a helpful, concise response in markdown format.`;
                       </div>
                     </div>
                     
-                    <div className="flex justify-between items-center">
-                      <div className="my-4">
+                    <div className="flex flex-col sm:flex-row justify-between items-center sm:items-stretch gap-4">
+                      <div className="my-2 sm:my-4 flex items-center justify-center">
                         <CloudSun className="w-20 h-20 text-slate-300 drop-shadow-md" />
                       </div>
                       
-                      <div className="flex flex-col gap-3">
+                      <div className="flex flex-col gap-2 sm:gap-3 w-full sm:w-auto">
                         <div className="flex items-center gap-4 bg-[#F8FAFC] px-4 py-3 rounded-2xl border border-slate-50">
                           <Thermometer className="w-4 h-4 text-slate-500" />
                           <span className="text-sm text-slate-500 w-24">Temperature</span>
@@ -832,21 +871,19 @@ Provide a helpful, concise response in markdown format.`;
                   </div>
 
                   {/* Auto Watering & pH Balancer */}
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="bg-white rounded-3xl p-6 shadow-sm border border-slate-100 flex flex-col justify-between">
                       <div>
                         <div className="flex items-center justify-between mb-4">
                           <Droplets className="w-6 h-6 text-slate-800" />
                           <div className="flex items-center gap-3">
-                            {pumpError && (
-                              <div className="flex items-center gap-1 text-rose-500 bg-rose-50 px-2 py-1 rounded-md" title={pumpError}>
-                                <AlertTriangle className="w-3 h-3" />
-                                <span className="text-[10px] font-medium">Error</span>
-                              </div>
-                            )}
                             <span className="text-sm font-medium text-slate-700">{sensorData.pump === 1 ? 'On' : 'Off'}</span>
                             <button 
-                              onClick={togglePump}
+                              onClick={async () => {
+                                const newVal = sensorData.pump === 1 ? 0 : 1;
+                                setSensorData(prev => ({ ...prev, pump: newVal }));
+                                await supabase.from('garden_stats').update({ value: newVal }).eq('device_id', deviceId).eq('sensor_name', 'pump');
+                              }}
                               className={`w-12 h-6 rounded-full p-1 transition-colors ${sensorData.pump === 1 ? 'bg-blue-500' : 'bg-slate-200'}`}
                             >
                               <div className={`w-4 h-4 bg-white rounded-full shadow-sm transition-transform ${sensorData.pump === 1 ? 'translate-x-6' : 'translate-x-0'}`}></div>
@@ -969,19 +1006,19 @@ Provide a helpful, concise response in markdown format.`;
                 </div>
 
                 {/* Right Column */}
-                <div className="xl:col-span-8 flex flex-col gap-6">
+                <div className="lg:col-span-7 xl:col-span-8 flex flex-col gap-4 md:gap-6">
                   
                   {/* Bottom Row: Growth & AI */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 flex-1">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6 flex-1">
                     
                     {/* Growth Analytics */}
-                    <div className="bg-white rounded-3xl p-6 shadow-sm border border-slate-100 flex flex-col h-[450px]">
+                    <div className="bg-white rounded-3xl p-6 shadow-sm border border-slate-100 flex flex-col h-[350px] md:h-[450px]">
                       <h3 className="font-medium text-slate-800 mb-1">Growth Analytics</h3>
-                      <p className="text-sm text-slate-500 mb-8">Strong nutrient balance</p>
+                      <p className="text-sm text-slate-500 mb-4 md:mb-8">Strong nutrient balance</p>
                       
-                      <div className="flex-1 flex flex-col items-center justify-center relative min-h-[160px]">
+                      <div className="flex-1 flex flex-col items-center justify-center relative min-h-[140px] md:min-h-[160px]">
                         {/* SVG Gauge */}
-                        <div className="relative w-48 h-24">
+                        <div className="relative w-40 h-20 md:w-48 md:h-24">
                           <svg viewBox="0 0 200 100" className="w-full h-full overflow-visible">
                             {/* Background arc */}
                             <path 
@@ -1012,21 +1049,21 @@ Provide a helpful, concise response in markdown format.`;
                             />
                           </svg>
                           <div className="absolute bottom-0 left-0 right-0 text-center translate-y-4">
-                            <div className="text-5xl font-serif text-slate-900 mb-1">87%</div>
-                            <div className="text-sm text-slate-500">Growth Level</div>
+                            <div className="text-4xl md:text-5xl font-serif text-slate-900 mb-1">87%</div>
+                            <div className="text-xs md:text-sm text-slate-500">Growth Level</div>
                           </div>
                         </div>
                       </div>
                       
-                      <div className="flex justify-between mt-auto pt-10">
-                        <div className="text-center"><span className="font-medium text-slate-900">92</span> <span className="text-xs text-slate-500 ml-1">Max</span></div>
-                        <div className="text-center"><span className="font-medium text-slate-900">72</span> <span className="text-xs text-slate-500 ml-1">Min</span></div>
-                        <div className="text-center"><span className="font-medium text-slate-900">64</span> <span className="text-xs text-slate-500 ml-1">Avg</span></div>
+                      <div className="flex justify-between mt-auto pt-8 md:pt-10">
+                        <div className="text-center"><span className="font-medium text-slate-900">92</span> <span className="text-[10px] md:text-xs text-slate-500 ml-1">Max</span></div>
+                        <div className="text-center"><span className="font-medium text-slate-900">72</span> <span className="text-[10px] md:text-xs text-slate-500 ml-1">Min</span></div>
+                        <div className="text-center"><span className="font-medium text-slate-900">64</span> <span className="text-[10px] md:text-xs text-slate-500 ml-1">Avg</span></div>
                       </div>
                     </div>
 
                     {/* AI Assistant */}
-                    <div className="bg-white rounded-3xl p-6 shadow-sm border border-slate-100 flex flex-col relative overflow-hidden h-[450px]">
+                    <div className="bg-white rounded-3xl p-6 shadow-sm border border-slate-100 flex flex-col relative overflow-hidden h-[400px] md:h-[450px]">
                       <div className="absolute top-0 left-0 right-0 h-32 bg-gradient-to-br from-rose-100 via-orange-50 to-emerald-50 opacity-80 pointer-events-none"></div>
                       
                       <div className="relative z-10 flex justify-between items-center mb-6">
