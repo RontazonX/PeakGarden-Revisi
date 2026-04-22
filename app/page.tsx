@@ -87,7 +87,7 @@ export default function Home() {
             <span className="text-emerald-600 font-semibold tracking-wider uppercase text-sm">Keunggulan</span>
             <h2 className="text-3xl md:text-4xl font-bold text-slate-900 mt-2 mb-4">Fitur Unggulan Kami</h2>
             <p className="text-lg text-slate-600 max-w-2xl mx-auto">
-              SmartGarden dirancang untuk memberikan kemudahan maksimal dalam merawat tanaman Anda dengan berbagai fitur canggih.
+              PeakGarden dirancang untuk memberikan kemudahan maksimal dalam merawat tanaman Anda dengan berbagai fitur canggih.
             </p>
           </div>
 
@@ -192,9 +192,9 @@ export default function Home() {
 
           <div className="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto">
             {[
-              { name: 'SmartGarden Home', price: 'Rp 299.000', desc: 'Ideal untuk tanaman hias dan kebun mini di rumah.', features: ['1 Sensor Suhu & Kelembapan', '1 Modul Kontrol Pompa', 'Koneksi WiFi 2.4GHz', 'Akses Dashboard Gratis', 'Instalasi Mudah (Plug & Play)'] },
-              { name: 'SmartGarden Pro', price: 'Rp 899.000', desc: 'Solusi lengkap untuk greenhouse dan urban farming.', features: ['3 Sensor Suhu & Kelembapan', 'Kontrol 2 Pompa Terpisah', 'Sensor Intensitas Cahaya', 'Baterai Cadangan', 'Notifikasi Telegram/Email'], popular: true },
-              { name: 'SmartGarden Farm', price: 'Hubungi Kami', desc: 'Sistem terintegrasi untuk produksi masal dan lahan luas.', features: ['Sensor Jaringan Mesh (Unlimited)', 'Kontrol Irigasi Presisi', 'Integrasi Panel Surya', 'Analisis Data AI', 'Dukungan Teknisi On-site'] }
+              { name: 'PeakGarden Home', price: 'Rp 299.000', desc: 'Ideal untuk tanaman hias dan kebun mini di rumah.', features: ['1 Sensor Suhu & Kelembapan', '1 Modul Kontrol Pompa', 'Koneksi WiFi 2.4GHz', 'Akses Dashboard Gratis', 'Instalasi Mudah (Plug & Play)'] },
+              { name: 'PeakGarden Pro', price: 'Rp 899.000', desc: 'Solusi lengkap untuk greenhouse dan urban farming.', features: ['3 Sensor Suhu & Kelembapan', 'Kontrol 2 Pompa Terpisah', 'Sensor Intensitas Cahaya', 'Baterai Cadangan', 'Notifikasi Telegram/Email'], popular: true },
+              { name: 'PeakGarden Farm', price: 'Hubungi Kami', desc: 'Sistem terintegrasi untuk produksi masal dan lahan luas.', features: ['Sensor Jaringan Mesh (Unlimited)', 'Kontrol Irigasi Presisi', 'Integrasi Panel Surya', 'Analisis Data AI', 'Dukungan Teknisi On-site'] }
             ].map((device, i) => (
               <motion.div 
                 key={i}
@@ -250,7 +250,7 @@ export default function Home() {
                 <div className="absolute inset-0 bg-gradient-to-t from-slate-900/80 via-transparent to-transparent"></div>
                 <div className="absolute bottom-6 left-6 right-6">
                   <h3 className="text-2xl font-bold text-white">Ahmad Reza</h3>
-                  <p className="text-emerald-400 font-medium">Founder & CEO SmartGarden</p>
+                  <p className="text-emerald-400 font-medium">Founder & CEO PeakGarden</p>
                 </div>
               </div>
             </motion.div>
@@ -267,7 +267,7 @@ export default function Home() {
               <div className="relative">
                 <Quote className="absolute -top-4 -left-4 w-12 h-12 text-emerald-100 -z-10" />
                 <p className="text-xl text-slate-700 italic leading-relaxed">
-                  &quot;Kami percaya bahwa masa depan pertanian ada di tangan teknologi. SmartGarden lahir dari keresahan kami melihat banyak petani dan penghobi tanaman yang kesulitan memantau kondisi lahan mereka secara real-time. Misi kami adalah mendemokratisasi teknologi IoT agar dapat diakses oleh semua kalangan, dari kebun rumah hingga perkebunan skala besar.&quot;
+                  &quot;Kami percaya bahwa masa depan pertanian ada di tangan teknologi. PeakGarden lahir dari keresahan kami melihat banyak petani dan penghobi tanaman yang kesulitan memantau kondisi lahan mereka secara real-time. Misi kami adalah mendemokratisasi teknologi IoT agar dapat diakses oleh semua kalangan, dari kebun rumah hingga perkebunan skala besar.&quot;
                 </p>
               </div>
               <div className="pt-6 flex gap-8">
@@ -296,7 +296,7 @@ export default function Home() {
 
           <div className="grid md:grid-cols-3 gap-8">
             {[
-              { name: 'Budi Santoso', role: 'Petani Hidroponik', text: 'Sejak menggunakan SmartGarden, hasil panen selada saya meningkat 30%. Sistem otomatisnya sangat membantu saat saya sedang tidak di kebun.' },
+              { name: 'Budi Santoso', role: 'Petani Hidroponik', text: 'Sejak menggunakan PeakGarden, hasil panen selada saya meningkat 30%. Sistem otomatisnya sangat membantu saat saya sedang tidak di kebun.' },
               { name: 'Siti Aminah', role: 'Penghobi Tanaman Hias', text: 'Sangat mudah digunakan! Saya bisa memantau kelembapan monstera saya dari kantor. Notifikasinya sangat responsif.' },
               { name: 'AgroTech Farm', role: 'Perkebunan Komersial', text: 'Dashboard yang sangat informatif. Kami menggunakan paket Enterprise dan integrasi datanya sangat mulus dengan sistem internal kami.' }
             ].map((testi, i) => (
@@ -334,7 +334,7 @@ export default function Home() {
         <div className="max-w-4xl mx-auto px-4 relative z-10 text-center">
           <h2 className="text-3xl md:text-4xl font-bold text-white mb-6">Siap untuk mendigitalkan kebun Anda?</h2>
           <p className="text-emerald-100 text-lg mb-10">
-            Bergabunglah dengan ratusan petani modern lainnya yang telah beralih ke SmartGarden.
+            Bergabunglah dengan ratusan petani modern lainnya yang telah beralih ke PeakGarden.
           </p>
           <Link 
             href="/register" 
@@ -348,7 +348,7 @@ export default function Home() {
       {/* Simple Footer */}
       <footer className="bg-white border-t border-slate-200 py-12">
         <div className="max-w-7xl mx-auto px-4 text-center text-slate-500">
-          <p>&copy; {new Date().getFullYear()} SmartGarden. All rights reserved.</p>
+          <p>&copy; {new Date().getFullYear()} PeakGarden. All rights reserved.</p>
         </div>
       </footer>
     </div>

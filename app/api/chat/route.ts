@@ -19,8 +19,8 @@ export async function POST(req: Request) {
 
     const ai = new GoogleGenAI({ apiKey });
 
-    const prompt = `You are an advanced AI Assistant for a Smart Garden dashboard.
-The current real-time sensor data is:i
+    const prompt = `You are an advanced AI Assistant for a PeakGarden dashboard.
+The current real-time sensor data is:
 - Temperature: ${sensorData.temp}°C
 - Soil Moisture: ${sensorData.moisture}%
 - Pump Status: ${sensorData.pump === 1 ? 'ON' : 'OFF'}

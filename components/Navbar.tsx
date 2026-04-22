@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { motion } from 'motion/react';
-import { Sprout, Menu, X, LogOut } from 'lucide-react';
+import { Sprout, Menu, X, LogOut, Mountain } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 
@@ -54,11 +54,12 @@ export default function Navbar() {
         <div className="flex justify-between items-center h-20">
           {/* Logo */}
           <Link href="/" className="flex items-center gap-2 group">
-            <div className="w-10 h-10 bg-emerald-500 rounded-xl flex items-center justify-center group-hover:bg-emerald-600 transition-colors">
-              <Sprout className="w-6 h-6 text-white" />
+            <div className="relative w-10 h-10 bg-gradient-to-br from-emerald-400 to-teal-600 rounded-xl flex items-center justify-center group-hover:shadow-lg group-hover:shadow-emerald-500/30 transition-all overflow-hidden">
+              <Mountain className="w-6 h-6 text-white/90 absolute bottom-1" />
+              <Sprout className="w-4 h-4 text-emerald-100 absolute top-1.5" />
             </div>
             <span className="text-xl font-bold bg-gradient-to-r from-emerald-700 to-teal-600 bg-clip-text text-transparent">
-              SmartGarden
+              PeakGarden
             </span>
           </Link>
 

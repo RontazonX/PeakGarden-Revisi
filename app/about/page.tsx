@@ -91,7 +91,7 @@ export default function AboutPage() {
           >
             <h2 className="text-3xl font-bold text-slate-900 mb-6">Membangun Masa Depan Pertanian</h2>
             <p className="text-lg text-slate-600 mb-6 leading-relaxed">
-              SmartGarden berawal dari sebuah ide sederhana: bagaimana kita bisa memanfaatkan teknologi Internet of Things (IoT) untuk membantu petani dan penghobi tanaman merawat kebun mereka dengan lebih efisien.
+              PeakGarden berawal dari sebuah ide sederhana: bagaimana kita bisa memanfaatkan teknologi Internet of Things (IoT) untuk membantu petani dan penghobi tanaman merawat kebun mereka dengan lebih efisien.
             </p>
             <p className="text-lg text-slate-600 mb-8 leading-relaxed">
               Dengan menggabungkan sensor presisi tinggi dan antarmuka web yang mudah digunakan, kami menciptakan ekosistem di mana tanaman Anda selalu mendapatkan perawatan optimal, bahkan saat Anda berada jauh dari rumah.
@@ -129,7 +129,7 @@ export default function AboutPage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
             <span className="text-emerald-600 font-semibold tracking-wider uppercase text-sm">Tim Kami</span>
-            <h2 className="text-3xl md:text-4xl font-bold text-slate-900 mt-2 mb-4">Orang di Balik SmartGarden</h2>
+            <h2 className="text-3xl md:text-4xl font-bold text-slate-900 mt-2 mb-4">Orang di Balik PeakGarden</h2>
             <p className="text-lg text-slate-600 max-w-2xl mx-auto">
               Kami adalah tim yang berdedikasi untuk menggabungkan teknologi dan alam.
             </p>
@@ -146,7 +146,7 @@ export default function AboutPage() {
             <div className="md:w-1/2 p-12 lg:p-16 text-white">
               <h2 className="text-3xl font-bold mb-6">Hubungi Kami</h2>
               <p className="text-emerald-100 mb-10 text-lg">
-                Punya pertanyaan tentang SmartGarden atau ingin berdiskusi tentang kebutuhan kebun Anda? Tim kami siap membantu.
+                Punya pertanyaan tentang PeakGarden atau ingin berdiskusi tentang kebutuhan kebun Anda? Tim kami siap membantu.
               </p>
               
               <div className="space-y-6">
@@ -156,7 +156,7 @@ export default function AboutPage() {
                   </div>
                   <div>
                     <p className="text-sm text-emerald-300">Email</p>
-                    <p className="font-medium text-lg">hello@smartgarden.id</p>
+                    <p className="font-medium text-lg">hello@peakgarden.id</p>
                   </div>
                 </div>
                 <div className="flex items-center gap-4">

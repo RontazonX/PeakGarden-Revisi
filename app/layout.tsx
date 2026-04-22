@@ -3,7 +3,7 @@ import './globals.css'; // Global styles
 import Navbar from '@/components/Navbar';
 
 export const metadata: Metadata = {
-  title: 'SmartGarden - Platform IoT Pertanian',
+  title: 'PeakGarden - Platform IoT Pertanian',
   description: 'Pantau dan kendalikan kebun Anda dari mana saja.',
 };
 

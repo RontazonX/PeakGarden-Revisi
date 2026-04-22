@@ -1,5 +1,5 @@
 {
   "name": "Revisi PeakGarden",
-  "description": "IoT Dashboard for Smart Garden using Supabase",
+  "description": "IoT Dashboard for PeakGarden using Supabase",
   "requestFramePermissions": []
 }

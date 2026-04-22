@@ -24,6 +24,7 @@ interface DeviceSettings {
   scheduleEnabled: number;
   scheduleOnTime: number; // minutes from midnight
   scheduleOffTime: number; // minutes from midnight
+  autoWateringEnabled: number;
 }
 
 // Helper functions for time conversion
@@ -39,7 +40,7 @@ const timeStrToMinutes = (timeStr: string) => {
   return h * 60 + m;
 };
 
-export default function SmartGardenApp() {
+export default function PeakGardenApp() {
   const router = useRouter();
   const [appState, setAppState] = useState<AppState>('CONNECT_DEVICE');
   
@@ -73,7 +74,8 @@ export default function SmartGardenApp() {
     notificationsEnabled: 0,
     scheduleEnabled: 0,
     scheduleOnTime: 480, // 08:00
-    scheduleOffTime: 540 // 09:00
+    scheduleOffTime: 540, // 09:00
+    autoWateringEnabled: 1
   });
   const [showSettings, setShowSettings] = useState(false);
   const [isSavingSettings, setIsSavingSettings] = useState(false);
@@ -348,6 +350,7 @@ export default function SmartGardenApp() {
             if (item.sensor_name === 'schedule_enabled') newSettings.scheduleEnabled = item.value;
             if (item.sensor_name === 'schedule_on_time') newSettings.scheduleOnTime = item.value;
             if (item.sensor_name === 'schedule_off_time') newSettings.scheduleOffTime = item.value;
+            if (item.sensor_name === 'auto_watering_enabled') newSettings.autoWateringEnabled = item.value;
           });
           return newSettings;
         });
@@ -394,15 +397,7 @@ export default function SmartGardenApp() {
     setSensorData(prev => ({ ...prev, pump: newValue }));
     
     try {
-      const { error } = await supabase
-        .from('garden_stats')
-        .update({ value: newValue })
-        .eq('device_id', deviceId)
-        .eq('sensor_name', 'pump');
-        
-      if (error) {
-        throw error;
-      }
+      await updateThreshold('pump', newValue);
     } catch (err: any) {
       let errorMessage = 'Unknown database error';
       if (err?.message) errorMessage = err.message;
@@ -464,7 +459,7 @@ export default function SmartGardenApp() {
               if (['temp', 'moisture'].includes(sensor_name)) {
                 setLastUpdated(new Date());
               }
-            } else if (['temp_threshold', 'moisture_threshold', 'notifications_enabled', 'schedule_enabled', 'schedule_on_time', 'schedule_off_time'].includes(sensor_name)) {
+            } else if (['temp_threshold', 'moisture_threshold', 'notifications_enabled', 'schedule_enabled', 'schedule_on_time', 'schedule_off_time', 'auto_watering_enabled'].includes(sensor_name)) {
               setDeviceSettings(prev => {
                 const updated = { ...prev };
                 if (sensor_name === 'temp_threshold') updated.tempThreshold = value;
@@ -473,6 +468,7 @@ export default function SmartGardenApp() {
                 if (sensor_name === 'schedule_enabled') updated.scheduleEnabled = value;
                 if (sensor_name === 'schedule_on_time') updated.scheduleOnTime = value;
                 if (sensor_name === 'schedule_off_time') updated.scheduleOffTime = value;
+                if (sensor_name === 'auto_watering_enabled') updated.autoWateringEnabled = value;
                 return updated;
               });
             }
@@ -525,17 +521,18 @@ export default function SmartGardenApp() {
   // Auto Watering based on Moisture Threshold
   useEffect(() => {
     if (appState !== 'DASHBOARD' || !deviceId) return;
+    if (deviceSettings.autoWateringEnabled === 0) return;
     
     const checkMoisture = async () => {
       // Turn pump ON if moisture drops below or equals threshold
       if (sensorData.moisture <= deviceSettings.moistureThreshold && sensorData.pump === 0) {
         setSensorData(prev => ({ ...prev, pump: 1 }));
-        await supabase.from('garden_stats').update({ value: 1 }).eq('device_id', deviceId).eq('sensor_name', 'pump');
+        await updateThreshold('pump', 1);
       }
       // Turn pump OFF if moisture is comfortably above threshold (e.g., + 10%)
       else if (sensorData.moisture >= deviceSettings.moistureThreshold + 10 && sensorData.pump === 1) {
         setSensorData(prev => ({ ...prev, pump: 0 }));
-        await supabase.from('garden_stats').update({ value: 0 }).eq('device_id', deviceId).eq('sensor_name', 'pump');
+        await updateThreshold('pump', 0);
       }
     };
     
@@ -545,7 +542,7 @@ export default function SmartGardenApp() {
     }, 1000);
     
     return () => clearTimeout(timer);
-  }, [sensorData.moisture, deviceSettings.moistureThreshold, sensorData.pump, deviceId, appState]);
+  }, [sensorData.moisture, deviceSettings.moistureThreshold, sensorData.pump, deviceId, appState, deviceSettings.autoWateringEnabled]);
 
   // Frontend Schedule Checker
   useEffect(() => {
@@ -558,12 +555,12 @@ export default function SmartGardenApp() {
       // If it's the exact minute to turn ON and pump is OFF
       if (currentMins === deviceSettings.scheduleOnTime && sensorData.pump === 0) {
         setSensorData(prev => ({ ...prev, pump: 1 }));
-        await supabase.from('garden_stats').update({ value: 1 }).eq('device_id', deviceId).eq('sensor_name', 'pump');
+        await updateThreshold('pump', 1);
       }
       // If it's the exact minute to turn OFF and pump is ON
       else if (currentMins === deviceSettings.scheduleOffTime && sensorData.pump === 1) {
         setSensorData(prev => ({ ...prev, pump: 0 }));
-        await supabase.from('garden_stats').update({ value: 0 }).eq('device_id', deviceId).eq('sensor_name', 'pump');
+        await updateThreshold('pump', 0);
       }
     };
     
@@ -581,7 +578,8 @@ export default function SmartGardenApp() {
         { device_id: deviceId, sensor_name: 'notifications_enabled', value: deviceSettings.notificationsEnabled },
         { device_id: deviceId, sensor_name: 'schedule_enabled', value: deviceSettings.scheduleEnabled },
         { device_id: deviceId, sensor_name: 'schedule_on_time', value: deviceSettings.scheduleOnTime },
-        { device_id: deviceId, sensor_name: 'schedule_off_time', value: deviceSettings.scheduleOffTime }
+        { device_id: deviceId, sensor_name: 'schedule_off_time', value: deviceSettings.scheduleOffTime },
+        { device_id: deviceId, sensor_name: 'auto_watering_enabled', value: deviceSettings.autoWateringEnabled }
       ];
       
       // Upsert each setting
@@ -1201,20 +1199,51 @@ export default function SmartGardenApp() {
                       <p className="text-xs text-slate-500 mt-2">Receive a notification if the temperature exceeds this limit.</p>
                     </div>
 
-                    <div className="pt-2 border-t border-slate-100">
-                      <label className="flex items-center justify-between text-sm font-medium text-slate-700 mb-2 mt-2">
-                        <span>Auto-Watering Trigger (%)</span>
-                        <span className="text-blue-600 font-bold">{deviceSettings.moistureThreshold}%</span>
-                      </label>
-                      <input 
-                        type="range" 
-                        min="0" max="100" step="5"
-                        value={deviceSettings.moistureThreshold}
-                        onChange={(e) => setDeviceSettings(prev => ({ ...prev, moistureThreshold: parseInt(e.target.value) }))}
-                        className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-blue-500"
-                      />
-                      <p className="text-xs text-slate-500 mt-2">The water pump will automatically turn on when soil moisture drops below this level.</p>
+                    <div className="pt-2 border-t border-slate-100 flex items-center justify-between mb-2">
+                      <div>
+                        <h4 className="font-medium text-slate-700 text-sm">Otomatisasi Penyiraman</h4>
+                        <p className="text-xs text-slate-500">Berdasarkan kelembapan tanah.</p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setDeviceSettings(prev => ({ ...prev, autoWateringEnabled: prev.autoWateringEnabled === 1 ? 0 : 1 }))}
+                        className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${
+                          deviceSettings.autoWateringEnabled === 1 ? 'bg-blue-500' : 'bg-slate-300'
+                        }`}
+                      >
+                        <span 
+                          className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                            deviceSettings.autoWateringEnabled === 1 ? 'translate-x-6' : 'translate-x-1'
+                          }`} 
+                        />
+                      </button>
                     </div>
+
+                    <AnimatePresence>
+                      {deviceSettings.autoWateringEnabled === 1 && (
+                        <motion.div
+                          initial={{ opacity: 0, height: 0 }}
+                          animate={{ opacity: 1, height: 'auto' }}
+                          exit={{ opacity: 0, height: 0 }}
+                          className="overflow-hidden"
+                        >
+                          <div className="pt-2">
+                            <label className="flex items-center justify-between text-sm font-medium text-slate-700 mb-2 mt-2">
+                              <span>Auto-Watering Trigger (%)</span>
+                              <span className="text-blue-600 font-bold">{deviceSettings.moistureThreshold}%</span>
+                            </label>
+                            <input 
+                              type="range" 
+                              min="0" max="100" step="5"
+                              value={deviceSettings.moistureThreshold}
+                              onChange={(e) => setDeviceSettings(prev => ({ ...prev, moistureThreshold: parseInt(e.target.value) }))}
+                              className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-blue-500"
+                            />
+                            <p className="text-xs text-slate-500 mt-2">The water pump will automatically turn on when soil moisture drops below this level.</p>
+                          </div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
                   </div>
                 </div>
 
